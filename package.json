@@ -1,0 +1,22 @@
+{
+  "name": "gaffer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Calendar Hype Man - AI-generated football manager-style hype speeches before your meetings",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "dev:web": "pnpm --filter @gaffer/web dev",
+    "dev:api": "pnpm --filter @gaffer/api dev",
+    "dev:jobs": "pnpm --filter @gaffer/jobs dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
