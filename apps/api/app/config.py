@@ -17,10 +17,6 @@ class Settings(BaseSettings):
     # Anthropic
     anthropic_api_key: str
 
-    # Google OAuth (for refreshing tokens)
-    google_client_id: str
-    google_client_secret: str
-
     # ElevenLabs
     elevenlabs_api_key: str
     elevenlabs_voice_id: str = "JBFqnCBsd6RMkjVDRZzb"  # Default: George
