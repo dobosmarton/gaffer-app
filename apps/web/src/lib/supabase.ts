@@ -22,8 +22,3 @@ export const getCurrentSession = async () => {
   } = await supabase.auth.getSession();
   return session;
 };
-
-export const getGoogleAccessToken = async () => {
-  const session = await getCurrentSession();
-  return session?.provider_token ?? null;
-};

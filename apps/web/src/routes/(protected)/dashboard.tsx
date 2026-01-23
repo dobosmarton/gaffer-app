@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EventCard, type CalendarEvent } from "@/components/event-card";
 import { HypePlayer } from "@/components/hype-player";
 import { ManagerSelector, getManagerName } from "@/components/manager-selector";
 import { useCalendarEvents } from "@/hooks/use-calendar-events";
 import { useSupabase } from "@/lib/supabase-provider";
-import { supabase } from "@/lib/supabase";
 import { Calendar, RefreshCw, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/(protected)/dashboard")({
@@ -21,7 +20,7 @@ type HypeState = {
 };
 
 function Dashboard() {
-  const { needsReauth } = useSupabase();
+  const { needsGoogleAuth, reconnectGoogle } = useSupabase();
   const [selectedManager, setSelectedManager] = useState("ferguson");
   const [hypeState, setHypeState] = useState<HypeState>({
     status: "idle",
@@ -30,6 +29,15 @@ function Dashboard() {
     audioUrl: null,
     manager: "ferguson",
   });
+
+  // Clean up blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (hypeState.audioUrl) {
+        URL.revokeObjectURL(hypeState.audioUrl);
+      }
+    };
+  }, [hypeState.audioUrl]);
 
   // Fetch real calendar events
   const {
@@ -41,21 +49,6 @@ function Dashboard() {
   } = useCalendarEvents({
     maxResults: 10,
   });
-
-  const handleReconnectGoogle = async () => {
-    // Re-trigger OAuth flow to get a fresh token
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        scopes: "https://www.googleapis.com/auth/calendar.readonly",
-        redirectTo: `${window.location.origin}/dashboard`,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
-    });
-  };
 
   const handleHypeMe = async (event: CalendarEvent) => {
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -158,20 +151,20 @@ function Dashboard() {
       />
 
       {/* Reconnect banner */}
-      {needsReauth && (
+      {needsGoogleAuth && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600" />
             <div>
-              <p className="font-medium text-amber-800">Calendar connection expired</p>
-              <p className="text-sm text-amber-600">Reconnect to Google to see your meetings</p>
+              <p className="font-medium text-amber-800">Connect your Google Calendar</p>
+              <p className="text-sm text-amber-600">Grant access to see your meetings</p>
             </div>
           </div>
           <button
-            onClick={handleReconnectGoogle}
+            onClick={reconnectGoogle}
             className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
           >
-            Reconnect Google
+            Connect Google
           </button>
         </div>
       )}

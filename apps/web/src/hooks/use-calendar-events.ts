@@ -16,25 +16,37 @@ type BackendCalendarEvent = {
 
 type BackendCalendarResponse = {
   events: BackendCalendarEvent[];
+  needs_google_auth?: boolean;
 };
+
+type BackendErrorResponse = {
+  detail: string | { message: string; needs_google_auth?: boolean };
+};
+
+export class NeedsGoogleAuthError extends Error {
+  constructor(message: string = "Google authentication required") {
+    super(message);
+    this.name = "NeedsGoogleAuthError";
+  }
+}
 
 export function useCalendarEvents(options?: {
   timeMin?: Date;
   timeMax?: Date;
   maxResults?: number;
 }) {
-  const { googleAccessToken } = useSupabase();
+  const { session, needsGoogleAuth } = useSupabase();
 
   return useQuery<CalendarEvent[], Error>({
     queryKey: [
       "calendar-events",
-      googleAccessToken,
+      session?.user?.id,
       options?.timeMin?.toISOString(),
       options?.timeMax?.toISOString(),
     ],
     queryFn: async () => {
-      if (!googleAccessToken) {
-        throw new Error("No Google access token available");
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
       }
 
       const timeMin = options?.timeMin ?? new Date();
@@ -50,15 +62,24 @@ export function useCalendarEvents(options?: {
 
       const response = await fetch(`${API_URL}/calendar/events?${params}`, {
         headers: {
-          "X-Google-Token": googleAccessToken,
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(
-          error.detail || `Failed to fetch calendar events: ${response.status}`
-        );
+        const error: BackendErrorResponse = await response.json().catch(() => ({
+          detail: "Unknown error",
+        }));
+
+        // Check if this is a "needs Google auth" error
+        const detail = error.detail;
+        if (typeof detail === "object" && detail.needs_google_auth) {
+          throw new NeedsGoogleAuthError(detail.message);
+        }
+
+        const message =
+          typeof detail === "string" ? detail : detail.message || "Unknown error";
+        throw new Error(message);
       }
 
       const data: BackendCalendarResponse = await response.json();
@@ -74,8 +95,16 @@ export function useCalendarEvents(options?: {
         attendees: event.attendees ?? undefined,
       }));
     },
-    enabled: !!googleAccessToken,
+    // Only enable if we have a session AND we don't need Google auth
+    enabled: !!session?.access_token && !needsGoogleAuth,
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
+    retry: (failureCount, error) => {
+      // Don't retry if user needs to authenticate with Google
+      if (error instanceof NeedsGoogleAuthError) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 }
