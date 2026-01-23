@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { AudioPlayerContextType, AudioPlayerState } from "./types";
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
@@ -40,12 +32,22 @@ export const AudioPlayerProvider = ({
   const [playbackRate, setPlaybackRateState] = useState(1);
   const animationRef = useRef<number | null>(null);
 
-  const updateTime = useCallback(() => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+  const startTimeUpdate = () => {
+    const update = () => {
+      if (audioRef.current) {
+        setCurrentTime(audioRef.current.currentTime);
+      }
+      animationRef.current = requestAnimationFrame(update);
+    };
+    animationRef.current = requestAnimationFrame(update);
+  };
+
+  const stopTimeUpdate = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
     }
-    animationRef.current = requestAnimationFrame(updateTime);
-  }, []);
+  };
 
   useEffect(() => {
     const audio = new Audio(src);
@@ -58,22 +60,18 @@ export const AudioPlayerProvider = ({
 
     const handlePlay = () => {
       setState("playing");
-      animationRef.current = requestAnimationFrame(updateTime);
+      startTimeUpdate();
     };
 
     const handlePause = () => {
       setState("paused");
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      stopTimeUpdate();
     };
 
     const handleEnded = () => {
       setState("idle");
       setCurrentTime(0);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      stopTimeUpdate();
       onEnded?.();
     };
 
@@ -108,11 +106,9 @@ export const AudioPlayerProvider = ({
       audio.removeEventListener("canplay", handleCanPlay);
       audio.pause();
       audio.src = "";
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      stopTimeUpdate();
     };
-  }, [src, onEnded, onError, updateTime]);
+  }, [src, onEnded, onError]);
 
   const play = () => {
     audioRef.current?.play();

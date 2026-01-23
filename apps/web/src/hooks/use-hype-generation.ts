@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { CalendarEvent, EventHypeState } from "@/components/event-card";
 
 export type HypeStatesMap = Record<string, EventHypeState>;
@@ -20,11 +20,17 @@ const DEFAULT_HYPE_STATE: EventHypeState = {
 
 export const useHypeGeneration = () => {
   const [hypeStates, setHypeStates] = useState<HypeStatesMap>({});
+  const hypeStatesRef = useRef(hypeStates);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    hypeStatesRef.current = hypeStates;
+  }, [hypeStates]);
 
   // Clean up blob URLs when component unmounts
   useEffect(() => {
     return () => {
-      Object.values(hypeStates).forEach((state) => {
+      Object.values(hypeStatesRef.current).forEach((state) => {
         if (state.audioUrl) {
           URL.revokeObjectURL(state.audioUrl);
         }
@@ -100,26 +106,32 @@ export const useHypeGeneration = () => {
     },
   });
 
-  const generateHype = useCallback((event: CalendarEvent, manager: string) => {
-    // Clean up previous audio URL if exists
-    const prevState = hypeStates[event.id];
-    if (prevState?.audioUrl) {
-      URL.revokeObjectURL(prevState.audioUrl);
-    }
+  const generateHype = useCallback(
+    (event: CalendarEvent, manager: string) => {
+      // Clean up previous audio URL if exists
+      const prevState = hypeStates[event.id];
+      if (prevState?.audioUrl) {
+        URL.revokeObjectURL(prevState.audioUrl);
+      }
 
-    updateEventState(event.id, {
-      status: "generating_text",
-      hypeText: null,
-      audioUrl: null,
-      manager,
-    });
+      updateEventState(event.id, {
+        status: "generating_text",
+        hypeText: null,
+        audioUrl: null,
+        manager,
+      });
 
-    mutation.mutate({ event, manager });
-  }, [hypeStates, updateEventState, mutation]);
+      mutation.mutate({ event, manager });
+    },
+    [hypeStates, updateEventState, mutation]
+  );
 
-  const getEventHypeState = useCallback((eventId: string): EventHypeState => {
-    return hypeStates[eventId] ?? DEFAULT_HYPE_STATE;
-  }, [hypeStates]);
+  const getEventHypeState = useCallback(
+    (eventId: string): EventHypeState => {
+      return hypeStates[eventId] ?? DEFAULT_HYPE_STATE;
+    },
+    [hypeStates]
+  );
 
   return {
     hypeStates,

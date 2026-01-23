@@ -25,18 +25,12 @@ function ProtectedLayout() {
             <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
               <Megaphone className="h-4 w-4 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">
-              Gaffer
-            </span>
+            <span className="text-xl font-bold text-gray-900">Gaffer</span>
           </a>
 
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.email}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={signOut}
-            >
+            <Button variant="ghost" size="sm" onClick={signOut}>
               Sign out
             </Button>
           </div>

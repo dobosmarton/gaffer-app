@@ -40,8 +40,8 @@ function LandingPage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-xl text-slate-300/80">
-            Get AI-generated motivational speeches before your meetings,
-            delivered in the style of legendary football managers.
+            Get AI-generated motivational speeches before your meetings, delivered in the style of
+            legendary football managers.
           </p>
 
           <div className="mt-10 flex items-center justify-center gap-4">
@@ -76,10 +76,9 @@ function LandingPage() {
               </span>
             </div>
             <p className="text-lg italic text-slate-200 leading-relaxed">
-              "RIGHT, LISTEN UP. This is it. The board room. 2 PM. They're gonna
-              come at you with spreadsheets, they're gonna question your projections.
-              But YOU — you've done the prep. You walk in there, you OWN that room.
-              Now get out there and make me proud."
+              "RIGHT, LISTEN UP. This is it. The board room. 2 PM. They're gonna come at you with
+              spreadsheets, they're gonna question your projections. But YOU — you've done the prep.
+              You walk in there, you OWN that room. Now get out there and make me proud."
             </p>
             <div className="mt-4 flex items-center gap-2">
               <span className="text-xl">🏆</span>

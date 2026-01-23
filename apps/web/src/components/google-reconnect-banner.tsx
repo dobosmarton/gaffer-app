@@ -15,10 +15,7 @@ export const GoogleReconnectBanner = ({ onReconnect }: GoogleReconnectBannerProp
           <p className="text-sm text-amber-600">Grant access to see your meetings</p>
         </div>
       </div>
-      <Button
-        onClick={onReconnect}
-        className="bg-amber-600 hover:bg-amber-700"
-      >
+      <Button onClick={onReconnect} className="bg-amber-600 hover:bg-amber-700">
         Connect Google
       </Button>
     </div>

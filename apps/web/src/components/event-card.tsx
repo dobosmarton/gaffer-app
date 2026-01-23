@@ -45,18 +45,14 @@ type EventCardProps = {
   className?: string;
 };
 
-export const EventCard = ({
-  event,
-  hypeState,
-  onGenerateHype,
-  className,
-}: EventCardProps) => {
+export const EventCard = ({ event, hypeState, onGenerateHype, className }: EventCardProps) => {
   const [selectedManager, setSelectedManager] = useState("ferguson");
   const timeUntil = getTimeUntil(event.start);
   const isStartingSoon = timeUntil.minutes < 30 && timeUntil.hours === 0;
-  const isGenerating = hypeState.status === "generating_text" || hypeState.status === "generating_audio";
+  const isGenerating =
+    hypeState.status === "generating_text" || hypeState.status === "generating_audio";
   const hasContent = hypeState.status !== "idle";
-  const selectedManagerData = MANAGERS.find(m => m.id === selectedManager);
+  const selectedManagerData = MANAGERS.find((m) => m.id === selectedManager);
 
   return (
     <Card
@@ -73,9 +69,7 @@ export const EventCard = ({
             <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
 
             {event.description && (
-              <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                {event.description}
-              </p>
+              <p className="mt-1 text-sm text-gray-500 line-clamp-2">{event.description}</p>
             )}
 
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
@@ -195,9 +189,7 @@ export const EventCard = ({
               {/* Hype text display */}
               {hypeState.hypeText && (
                 <div className="p-6">
-                  <p className="text-gray-700 leading-relaxed italic">
-                    "{hypeState.hypeText}"
-                  </p>
+                  <p className="text-gray-700 leading-relaxed italic">"{hypeState.hypeText}"</p>
                   <p className="mt-3 text-sm font-medium text-gray-500">
                     — {getManagerName(hypeState.manager)}
                   </p>

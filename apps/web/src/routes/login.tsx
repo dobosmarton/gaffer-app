@@ -48,9 +48,7 @@ function LoginPage() {
           <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
             Welcome to Gaffer
           </h1>
-          <p className="mt-2 text-slate-400">
-            Sign in to get hyped for your meetings
-          </p>
+          <p className="mt-2 text-slate-400">Sign in to get hyped for your meetings</p>
         </div>
 
         <div className="mt-8">

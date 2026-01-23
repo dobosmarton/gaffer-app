@@ -26,9 +26,7 @@ function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Your Upcoming Meetings</h1>
-        <p className="mt-1 text-gray-600">
-          Select a meeting and get your pre-match team talk.
-        </p>
+        <p className="mt-1 text-gray-600">Select a meeting and get your pre-match team talk.</p>
       </div>
 
       {needsGoogleAuth && <GoogleReconnectBanner onReconnect={reconnectGoogle} />}

@@ -91,9 +91,7 @@ export const EventsList = ({
         <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
           <Calendar className="h-10 w-10 text-gray-400 mx-auto" />
           <p className="mt-3 text-gray-600 font-medium">No upcoming meetings</p>
-          <p className="text-gray-500 text-sm mt-1">
-            You're all clear for the next 24 hours!
-          </p>
+          <p className="text-gray-500 text-sm mt-1">You're all clear for the next 24 hours!</p>
         </div>
       )}
 

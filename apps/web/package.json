@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "deploy": "wrangler pages deploy ./dist --project-name=gaffer"
   },
   "dependencies": {
@@ -29,15 +31,23 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@tanstack/router-plugin": "^1.121.27",
     "@types/node": "^22.13.1",
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "^4.5.2",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^17.1.0",
     "postcss": "^8.5.1",
+    "prettier": "^3.8.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.53.1",
     "vite": "^6.3.5",
     "wrangler": "^4.46.0"
   }

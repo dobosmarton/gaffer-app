@@ -56,9 +56,7 @@ export const ManagerSelector = ({
 }: ManagerSelectorProps) => {
   return (
     <div className={cn("grid gap-3", className)}>
-      <label className="text-sm font-medium text-gray-700">
-        Choose your manager
-      </label>
+      <label className="text-sm font-medium text-gray-700">Choose your manager</label>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {MANAGERS.map((manager) => (
           <Button
@@ -78,9 +76,7 @@ export const ManagerSelector = ({
               {manager.emoji}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 truncate">
-                {manager.name}
-              </p>
+              <p className="font-semibold text-gray-900 truncate">{manager.name}</p>
               <p className="text-sm text-gray-500 line-clamp-2 font-normal">
                 {manager.description}
               </p>

@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { useSupabase } from "@/lib/supabase-provider";
 import type { CalendarEvent } from "@/components/event-card";
+import { useSupabase } from "@/lib/supabase-provider";
+import { useQuery } from "@tanstack/react-query";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -50,8 +50,7 @@ export function useCalendarEvents(options?: {
       }
 
       const timeMin = options?.timeMin ?? new Date();
-      const timeMax =
-        options?.timeMax ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const timeMax = options?.timeMax ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
       const maxResults = options?.maxResults ?? 10;
 
       const params = new URLSearchParams({
@@ -77,8 +76,7 @@ export function useCalendarEvents(options?: {
           throw new NeedsGoogleAuthError(detail.message);
         }
 
-        const message =
-          typeof detail === "string" ? detail : detail.message || "Unknown error";
+        const message = typeof detail === "string" ? detail : detail.message || "Unknown error";
         throw new Error(message);
       }
 

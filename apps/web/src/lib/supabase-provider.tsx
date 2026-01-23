@@ -38,34 +38,37 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const tokenCheckAttempted = useRef(false);
 
   // Store Google refresh token on backend (called once after OAuth)
-  const storeGoogleToken = useCallback(async (refreshToken: string | null | undefined, accessToken: string) => {
-    if (tokenStoreAttempted.current) return;
-    tokenStoreAttempted.current = true;
+  const storeGoogleToken = useCallback(
+    async (refreshToken: string | null | undefined, accessToken: string) => {
+      if (tokenStoreAttempted.current) return;
+      tokenStoreAttempted.current = true;
 
-    if (!refreshToken || typeof refreshToken !== "string" || refreshToken.trim() === "") {
-      setNeedsGoogleAuth(true);
-      return;
-    }
+      if (!refreshToken || typeof refreshToken !== "string" || refreshToken.trim() === "") {
+        setNeedsGoogleAuth(true);
+        return;
+      }
 
-    try {
-      const response = await fetch(`${API_URL}/auth/store-google-token`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
+      try {
+        const response = await fetch(`${API_URL}/auth/store-google-token`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
 
-      if (response.ok) {
-        setNeedsGoogleAuth(false);
-      } else {
+        if (response.ok) {
+          setNeedsGoogleAuth(false);
+        } else {
+          setNeedsGoogleAuth(true);
+        }
+      } catch {
         setNeedsGoogleAuth(true);
       }
-    } catch {
-      setNeedsGoogleAuth(true);
-    }
-  }, []);
+    },
+    []
+  );
 
   // Check if user has Google token stored on backend
   const checkGoogleTokenStatus = useCallback(async (accessToken: string) => {
@@ -174,11 +177,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     [session, isLoading, signOut, needsGoogleAuth, reconnectGoogle]
   );
 
-  return (
-    <SupabaseContext.Provider value={value}>
-      {children}
-    </SupabaseContext.Provider>
-  );
+  return <SupabaseContext.Provider value={value}>{children}</SupabaseContext.Provider>;
 }
 
 export function useSupabase() {
