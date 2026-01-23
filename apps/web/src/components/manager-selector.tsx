@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type Manager = {
@@ -47,12 +48,12 @@ type ManagerSelectorProps = {
   className?: string;
 };
 
-export function ManagerSelector({
+export const ManagerSelector = ({
   selected,
   onSelect,
   disabled,
   className,
-}: ManagerSelectorProps) {
+}: ManagerSelectorProps) => {
   return (
     <div className={cn("grid gap-3", className)}>
       <label className="text-sm font-medium text-gray-700">
@@ -60,14 +61,14 @@ export function ManagerSelector({
       </label>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {MANAGERS.map((manager) => (
-          <button
+          <Button
             key={manager.id}
+            variant="outline"
             onClick={() => onSelect(manager.id)}
             disabled={disabled}
             className={cn(
-              "flex items-start gap-3 rounded-xl border-2 p-4 text-left transition-all",
+              "h-auto flex items-start gap-3 rounded-xl border-2 p-4 text-left justify-start",
               "hover:border-primary-400 hover:bg-gradient-to-br hover:from-primary-50 hover:to-teal-50",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
               selected === manager.id
                 ? "border-primary-500 bg-gradient-to-br from-primary-50 to-teal-50 ring-2 ring-primary-500/20 shadow-md shadow-primary-500/10"
                 : "border-gray-200 bg-white"
@@ -80,17 +81,17 @@ export function ManagerSelector({
               <p className="font-semibold text-gray-900 truncate">
                 {manager.name}
               </p>
-              <p className="text-sm text-gray-500 line-clamp-2">
+              <p className="text-sm text-gray-500 line-clamp-2 font-normal">
                 {manager.description}
               </p>
             </div>
-          </button>
+          </Button>
         ))}
       </div>
     </div>
   );
-}
+};
 
-export function getManagerName(managerId: string): string {
+export const getManagerName = (managerId: string): string => {
   return MANAGERS.find((m) => m.id === managerId)?.name ?? "The Gaffer";
-}
+};

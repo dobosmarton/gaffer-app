@@ -11,14 +11,14 @@ type ShimmeringTextProps = {
   shimmerColor?: string;
 };
 
-export function ShimmeringText({
+export const ShimmeringText = ({
   text,
   className,
   duration = 2,
   repeat = true,
   startOnView = true,
   shimmerColor = "rgba(255, 255, 255, 0.8)",
-}: ShimmeringTextProps) {
+}: ShimmeringTextProps) => {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: !repeat });
 
@@ -59,35 +59,4 @@ export function ShimmeringText({
       {text}
     </motion.span>
   );
-}
-
-export function ShimmeringGradient({
-  children,
-  className,
-  duration = 3,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  duration?: number;
-}) {
-  return (
-    <motion.div
-      className={cn("relative overflow-hidden", className)}
-      initial={{ opacity: 0.5 }}
-      animate={{ opacity: 1 }}
-    >
-      {children}
-      <motion.div
-        className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent"
-        animate={{
-          translateX: ["calc(-100%)", "calc(200%)"],
-        }}
-        transition={{
-          duration,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
-    </motion.div>
-  );
-}
+};

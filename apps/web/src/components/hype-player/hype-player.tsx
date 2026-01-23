@@ -1,16 +1,9 @@
 import { motion, AnimatePresence } from "motion/react";
-import {
-  AudioPlayerProvider,
-  AudioPlayerButton,
-  AudioPlayerProgress,
-  AudioPlayerTime,
-  AudioPlayerDuration,
-  AudioPlayerSpeed,
-  useAudioPlayer,
-} from "@/components/ui/audio-player";
-import { BarVisualizer } from "@/components/ui/bar-visualizer";
-import { ShimmeringText } from "@/components/ui/shimmering-text";
+import { AudioPlayerProvider } from "@/components/ui/audio-player";
+import { BarVisualizer } from "@/components/ui/visualizers";
+import { ShimmeringText } from "@/components/ui/shimmering";
 import { cn } from "@/lib/utils";
+import { AudioPlayerControls } from "./audio-player-controls";
 
 type HypeStatus = "idle" | "generating_text" | "generating_audio" | "ready" | "error";
 
@@ -23,14 +16,14 @@ type HypePlayerProps = {
   className?: string;
 };
 
-export function HypePlayer({
+export const HypePlayer = ({
   hypeText,
   audioUrl,
   status,
   managerName,
   onRegenerate,
   className,
-}: HypePlayerProps) {
+}: HypePlayerProps) => {
   const isGenerating = status === "generating_text" || status === "generating_audio";
   const hasAudio = status === "ready" && audioUrl;
 
@@ -141,48 +134,4 @@ export function HypePlayer({
       )}
     </div>
   );
-}
-
-function AudioPlayerControls({ onRegenerate }: { onRegenerate?: () => void }) {
-  const { state } = useAudioPlayer();
-
-  return (
-    <div className="p-6 bg-gradient-to-b from-white to-gray-50/50">
-      <div className="flex items-center gap-4">
-        <AudioPlayerButton />
-
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-3">
-            <BarVisualizer
-              state={state === "playing" ? "playing" : "idle"}
-              barCount={24}
-              className="flex-1 h-10"
-              color="#10b981"
-            />
-          </div>
-          <AudioPlayerProgress />
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <AudioPlayerTime />
-          <span>/</span>
-          <AudioPlayerDuration />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <AudioPlayerSpeed />
-          {onRegenerate && (
-            <button
-              onClick={onRegenerate}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-50 transition-colors"
-            >
-              Regenerate
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+};

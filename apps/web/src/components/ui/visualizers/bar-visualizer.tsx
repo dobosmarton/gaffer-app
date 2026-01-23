@@ -1,8 +1,7 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-
-type VisualizerState = "idle" | "loading" | "playing" | "paused";
+import type { VisualizerState } from "./types";
 
 type BarVisualizerProps = {
   state?: VisualizerState;
@@ -11,12 +10,12 @@ type BarVisualizerProps = {
   color?: string;
 };
 
-export function BarVisualizer({
+export const BarVisualizer = ({
   state = "idle",
   barCount = 12,
   className,
   color = "#10b981",
-}: BarVisualizerProps) {
+}: BarVisualizerProps) => {
   const [bars, setBars] = useState<number[]>(() =>
     Array(barCount).fill(0.2)
   );
@@ -74,45 +73,4 @@ export function BarVisualizer({
       ))}
     </div>
   );
-}
-
-type WaveformVisualizerProps = {
-  state?: VisualizerState;
-  className?: string;
-  color?: string;
 };
-
-export function WaveformVisualizer({
-  state = "idle",
-  className,
-  color = "#10b981",
-}: WaveformVisualizerProps) {
-  return (
-    <div className={cn("flex items-center justify-center gap-0.5", className)}>
-      {Array(5)
-        .fill(0)
-        .map((_, i) => (
-          <motion.div
-            key={i}
-            className="w-1 rounded-full"
-            style={{ backgroundColor: color }}
-            animate={
-              state === "playing" || state === "loading"
-                ? {
-                    height: [12, 24, 12],
-                    transition: {
-                      duration: 0.5,
-                      repeat: Infinity,
-                      delay: i * 0.1,
-                      ease: "easeInOut",
-                    },
-                  }
-                : {
-                    height: 8,
-                  }
-            }
-          />
-        ))}
-    </div>
-  );
-}

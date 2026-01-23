@@ -1,4 +1,7 @@
-import { Calendar, Clock, MapPin, Users } from "lucide-react";
+import { Clock, MapPin, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export type CalendarEvent = {
@@ -18,19 +21,19 @@ type EventCardProps = {
   className?: string;
 };
 
-export function EventCard({
+export const EventCard = ({
   event,
   onHypeMe,
   isGenerating,
   className,
-}: EventCardProps) {
+}: EventCardProps) => {
   const timeUntil = getTimeUntil(event.start);
   const isStartingSoon = timeUntil.minutes < 30 && timeUntil.hours === 0;
 
   return (
-    <div
+    <Card
       className={cn(
-        "rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md",
+        "p-5 transition-shadow hover:shadow-md",
         isStartingSoon && "border-orange-200 bg-orange-50/50",
         className
       )}
@@ -70,44 +73,41 @@ export function EventCard({
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          {/* Time until badge */}
-          <div
+          <Badge
+            variant={isStartingSoon ? "destructive" : "secondary"}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium",
+              "rounded-full",
               isStartingSoon
-                ? "bg-orange-100 text-orange-700"
+                ? "bg-orange-100 text-orange-700 border-orange-200"
                 : "bg-gray-100 text-gray-600"
             )}
           >
             {formatTimeUntil(timeUntil)}
-          </div>
+          </Badge>
 
-          {/* Hype button */}
-          <button
+          <Button
             onClick={onHypeMe}
             disabled={isGenerating}
             className={cn(
-              "rounded-lg bg-gradient-to-r from-primary-500 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary-500/20 transition-all",
-              "hover:shadow-lg hover:shadow-primary-500/30 hover:scale-105",
-              "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
+              "bg-gradient-to-r from-primary-500 to-teal-500 shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 hover:scale-105",
               isGenerating && "animate-pulse"
             )}
           >
             {isGenerating ? "Generating..." : "Hype Me"}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
-}
+};
 
-function formatTime(date: Date): string {
+const formatTime = (date: Date): string => {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
-}
+};
 
 type TimeUntil = {
   hours: number;
@@ -115,7 +115,7 @@ type TimeUntil = {
   isPast: boolean;
 };
 
-function getTimeUntil(date: Date): TimeUntil {
+const getTimeUntil = (date: Date): TimeUntil => {
   const now = new Date();
   const diff = date.getTime() - now.getTime();
 
@@ -127,11 +127,11 @@ function getTimeUntil(date: Date): TimeUntil {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
   return { hours, minutes, isPast: false };
-}
+};
 
-function formatTimeUntil({ hours, minutes, isPast }: TimeUntil): string {
+const formatTimeUntil = ({ hours, minutes, isPast }: TimeUntil): string => {
   if (isPast) return "Now";
   if (hours > 0) return `in ${hours}h ${minutes}m`;
   if (minutes > 0) return `in ${minutes}m`;
   return "Starting now";
-}
+};

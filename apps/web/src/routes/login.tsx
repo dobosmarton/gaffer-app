@@ -1,4 +1,5 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { getCurrentUser, supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
@@ -12,8 +13,6 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const navigate = useNavigate();
-
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -54,9 +53,10 @@ function LoginPage() {
         </div>
 
         <div className="mt-8">
-          <button
+          <Button
             onClick={handleGoogleLogin}
-            className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-4 font-semibold text-gray-700 shadow-lg transition-all hover:bg-gray-50 hover:scale-[1.02] hover:shadow-xl"
+            variant="secondary"
+            className="w-full h-auto py-4 bg-white text-gray-700 hover:bg-gray-50 hover:scale-[1.02] shadow-lg transition-all"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -77,7 +77,7 @@ function LoginPage() {
               />
             </svg>
             Continue with Google
-          </button>
+          </Button>
 
           <p className="mt-4 text-center text-sm text-primary-300/60">
             We'll request access to your Google Calendar to show your upcoming meetings.
@@ -92,4 +92,4 @@ function LoginPage() {
       </div>
     </div>
   );
-}
+};
