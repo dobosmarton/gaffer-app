@@ -1,14 +1,13 @@
 import { Calendar, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EventCard, type CalendarEvent } from "@/components/event-card";
-import type { HypeState } from "@/hooks/use-hype-generation";
+import { EventCard, type CalendarEvent, type EventHypeState } from "@/components/event-card";
 
 type EventsListProps = {
   events: CalendarEvent[] | undefined;
   isLoading: boolean;
   error: Error | null;
-  hypeState: HypeState;
-  onHypeMe: (event: CalendarEvent) => void;
+  getEventHypeState: (eventId: string) => EventHypeState;
+  onGenerateHype: (event: CalendarEvent, managerId: string) => void;
   onRefetch: () => void;
   isRefetching: boolean;
 };
@@ -17,8 +16,8 @@ export const EventsList = ({
   events,
   isLoading,
   error,
-  hypeState,
-  onHypeMe,
+  getEventHypeState,
+  onGenerateHype,
   onRefetch,
   isRefetching,
 }: EventsListProps) => {
@@ -77,12 +76,8 @@ export const EventsList = ({
             <EventCard
               key={event.id}
               event={event}
-              onHypeMe={() => onHypeMe(event)}
-              isGenerating={
-                hypeState.eventId === event.id &&
-                (hypeState.status === "generating_text" ||
-                  hypeState.status === "generating_audio")
-              }
+              hypeState={getEventHypeState(event.id)}
+              onGenerateHype={(managerId) => onGenerateHype(event, managerId)}
             />
           ))}
         </div>

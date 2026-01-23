@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Megaphone } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
@@ -13,40 +14,40 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-pitch-dark">
+    <div className="min-h-screen bg-slate-900">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-teal-500/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-accent-500/5 blur-3xl" />
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-amber-500/5 blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-4xl px-4 py-20">
         <div className="text-center">
           {/* Logo/Title */}
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
-            <span className="text-2xl">⚽</span>
-            <span className="text-sm font-medium text-primary-300">Pre-match motivation</span>
+            <Megaphone className="h-5 w-5 text-amber-400" />
+            <span className="text-sm font-medium text-slate-300">Pre-meeting motivation</span>
           </div>
 
           <h1 className="mt-8 text-5xl font-extrabold tracking-tight sm:text-7xl">
-            <span className="bg-gradient-to-r from-white via-primary-200 to-teal-200 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
               Gaffer
             </span>
-            <span className="mt-2 block text-2xl font-medium text-primary-400/80">
-              Calendar Hype Man
+            <span className="mt-2 block text-2xl font-medium text-slate-400">
+              Your Calendar Hype Man
             </span>
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-xl text-primary-100/80">
-            Get AI-generated football manager-style motivational speeches before your meetings.
-            Because every budget review deserves a pre-match team talk.
+          <p className="mx-auto mt-6 max-w-2xl text-xl text-slate-300/80">
+            Get AI-generated motivational speeches before your meetings,
+            delivered in the style of legendary football managers.
           </p>
 
           <div className="mt-10 flex items-center justify-center gap-4">
             <a
               href="/login"
-              className="group relative inline-flex items-center overflow-hidden rounded-xl bg-pitch-vibrant px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-primary-500/25 transition-all hover:shadow-xl hover:shadow-primary-500/30 hover:scale-105"
+              className="group relative inline-flex items-center overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl hover:shadow-amber-500/30 hover:scale-105"
             >
               <span className="relative z-10 flex items-center">
                 Get Hyped
@@ -68,13 +69,13 @@ function LandingPage() {
           </div>
 
           {/* Quote card */}
-          <div className="mt-16 rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+          <div className="relative mt-16 rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
             <div className="absolute -top-3 left-8">
-              <span className="rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-pitch-950">
+              <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-slate-900">
                 SAMPLE HYPE
               </span>
             </div>
-            <p className="text-lg italic text-primary-100 leading-relaxed">
+            <p className="text-lg italic text-slate-200 leading-relaxed">
               "RIGHT, LISTEN UP. This is it. The board room. 2 PM. They're gonna
               come at you with spreadsheets, they're gonna question your projections.
               But YOU — you've done the prep. You walk in there, you OWN that room.
@@ -82,7 +83,7 @@ function LandingPage() {
             </p>
             <div className="mt-4 flex items-center gap-2">
               <span className="text-xl">🏆</span>
-              <p className="text-sm font-medium text-primary-300">
+              <p className="text-sm font-medium text-slate-400">
                 Sir Alex Ferguson mode • Q3 Budget Review
               </p>
             </div>

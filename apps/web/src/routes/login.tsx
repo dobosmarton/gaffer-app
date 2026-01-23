@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, supabase } from "@/lib/supabase";
 
@@ -32,22 +33,22 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-pitch-dark">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-teal-500/10 blur-3xl" />
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl">
         <div className="text-center">
-          <div className="inline-flex items-center gap-2 text-3xl">
-            <span>⚽</span>
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10">
+            <Megaphone className="h-6 w-6 text-amber-400" />
           </div>
-          <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-white to-primary-200 bg-clip-text text-transparent">
+          <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
             Welcome to Gaffer
           </h1>
-          <p className="mt-2 text-primary-200/70">
+          <p className="mt-2 text-slate-400">
             Sign in to get hyped for your meetings
           </p>
         </div>
@@ -79,17 +80,17 @@ function LoginPage() {
             Continue with Google
           </Button>
 
-          <p className="mt-4 text-center text-sm text-primary-300/60">
+          <p className="mt-4 text-center text-sm text-slate-500">
             We'll request access to your Google Calendar to show your upcoming meetings.
           </p>
         </div>
 
         <div className="mt-8 text-center">
-          <a href="/" className="text-sm text-primary-400 hover:text-primary-300 transition-colors">
+          <a href="/" className="text-sm text-slate-400 hover:text-slate-300 transition-colors">
             ← Back to home
           </a>
         </div>
       </div>
     </div>
   );
-};
+}
