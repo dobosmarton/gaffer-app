@@ -10,12 +10,22 @@ class Settings(BaseSettings):
     app_env: str = "development"
     frontend_url: str = "http://localhost:3000"
 
+    # Database (PostgreSQL via Supabase)
+    database_url: str  # postgresql+asyncpg://user:pass@host:port/db
+
     # Supabase
     supabase_url: str
     supabase_service_role_key: str
 
     # Anthropic
     anthropic_api_key: str
+
+    # Google OAuth (for refreshing tokens server-side)
+    google_client_id: str
+    google_client_secret: str
+
+    # Token encryption (Fernet key - generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    token_encryption_key: str
 
     # ElevenLabs
     elevenlabs_api_key: str

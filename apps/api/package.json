@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "source .venv/bin/activate && uvicorn app.main:app --reload --port 8000",
+    "db:migrate": "source .venv/bin/activate && alembic upgrade head",
+    "db:rollback": "source .venv/bin/activate && alembic downgrade -1",
+    "db:generate": "source .venv/bin/activate && alembic revision --autogenerate -m",
+    "db:status": "source .venv/bin/activate && alembic current",
     "deploy": "fly deploy"
   }
 }
