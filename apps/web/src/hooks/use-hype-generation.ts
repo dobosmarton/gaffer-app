@@ -1,6 +1,6 @@
-import { useMutation } from "@tanstack/react-query";
-import { useState, useEffect, useCallback, useRef } from "react";
 import type { CalendarEvent, EventHypeState } from "@/components/event-card";
+import { useMutation } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type HypeStatesMap = Record<string, EventHypeState>;
 
@@ -75,11 +75,11 @@ export const useHypeGeneration = () => {
         hypeText: textData.hype_text,
       });
 
-      // Step 2: Generate audio
+      // Step 2: Generate audio (use audio_text which has emotion tags for TTS)
       const audioResponse = await fetch(`${API_URL}/hype/audio`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: textData.hype_text }),
+        body: JSON.stringify({ text: textData.audio_text }),
       });
 
       if (!audioResponse.ok) {

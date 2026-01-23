@@ -288,7 +288,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 # ElevenLabs
 ELEVENLABS_API_KEY=your_elevenlabs_key
-ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb
+ELEVENLABS_VOICE_ID=wo6udizrrtpIxWGp2qJk
 ```
 
 Generate a Fernet encryption key:

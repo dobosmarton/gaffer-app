@@ -10,7 +10,7 @@ Dry humor and cutting wit. 'I prefer not to speak.'
 Creates a siege mentality - you against the world.
 Emphasizes preparation and that you are the 'Special One' in this situation.""",
     "klopp": """Jürgen Klopp style: High energy, emotional, emphasizes togetherness.
-Lots of passion, hugs implied. 'BOOM!' moments. Heavy metal football energy.
+Lots of passion, hugs implied. 'BOOM!' moments. Heavy metal football energy. Slight German accent.
 German-English hybrid enthusiasm. Infectious positivity.
 Makes you feel like part of something bigger.
 Celebrates the collective while making individuals feel special.""",

@@ -1,3 +1,5 @@
+import re
+
 import anthropic
 
 from app.config import get_settings
@@ -5,6 +7,35 @@ from app.prompts.manager_styles import MANAGER_STYLES
 
 settings = get_settings()
 client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+# Whitelist of supported ElevenLabs v3 audio tags
+SUPPORTED_AUDIO_TAGS = {
+    # Emotions
+    "excited", "nervous", "frustrated", "calm", "intense", "angry",
+    "sad", "happy", "sorrowful", "cheerful", "tired",
+    # Delivery
+    "whispers", "whisper", "shouts", "shout", "sarcastic", "deadpan",
+    "playful", "serious", "dramatic",
+    # Reactions
+    "sighs", "sigh", "laughs", "laugh", "gulps", "gasps", "pause",
+    "hesitates", "stammers",
+}
+
+
+def strip_audio_tags(text: str) -> str:
+    """Remove [tag] markers from text for display."""
+    return re.sub(r'\[[\w\s]+\]\s*', '', text).strip()
+
+
+def sanitize_audio_tags(text: str) -> str:
+    """Remove unsupported tags, keep only whitelisted ones."""
+    def replace_tag(match: re.Match[str]) -> str:
+        tag = match.group(1).lower().strip()
+        if tag in SUPPORTED_AUDIO_TAGS:
+            return f"[{tag}] "
+        return ""  # Remove unsupported tag
+
+    return re.sub(r'\[([\w\s]+)\]\s*', replace_tag, text)
 
 
 async def generate_hype_text(
@@ -22,7 +53,14 @@ async def generate_hype_text(
 
 Your job is to deliver an intense, motivating speech that will pump up the listener before their meeting. Keep it to 3-5 sentences. Be dramatic but encouraging. Reference the specific meeting they're about to attend.
 
-Important guidelines:
+IMPORTANT - Audio delivery tags:
+Use [tag] markers to control how the speech sounds when read aloud by text-to-speech.
+Available tags: [excited], [intense], [nervous], [calm], [whispers], [shouts], [sarcastic], [pause], [sighs], [laughs]
+Place tags before the text they affect to set the tone.
+Example: "[intense] Listen to me! [pause] This is YOUR moment! [shouts] Now GO GET THEM!"
+
+Guidelines:
+- NEVER use asterisks or narration like *leans in* or *voice rising* - ONLY use [tag] format
 - Stay in character as the manager throughout
 - Reference the meeting title/topic in your speech
 - Make it personal and direct (use "you")

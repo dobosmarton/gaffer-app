@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # ElevenLabs
     elevenlabs_api_key: str
-    elevenlabs_voice_id: str = "JBFqnCBsd6RMkjVDRZzb"  # Default: George
+    elevenlabs_voice_id: str = "wo6udizrrtpIxWGp2qJk"
 
     @property
     def is_production(self) -> bool:
