@@ -16,8 +16,9 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 │         │                │                                  │        │
 └─────────┼────────────────┼──────────────────────────────────┼────────┘
           │                │                                  │
-          │  GET /calendar/events      POST /hype/generate    │  POST /hype/audio
-          │  X-Google-Token header     { event_title, ... }   │  { text }
+          │  Supabase JWT  │  GET /calendar/events            │
+          │  (no Google    │  POST /hype/generate             │  POST /hype/audio
+          │   tokens!)     │                                  │
           ▼                ▼                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          BACKEND (apps/api)                          │
@@ -29,20 +30,36 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 │  │               │  │     Generation    │  │    Streaming      │    │
 │  └───────┬───────┘  └─────────┬─────────┘  └─────────┬─────────┘    │
 │          │                    │                      │               │
-└──────────┼────────────────────┼──────────────────────┼───────────────┘
-           │                    │                      │
-           ▼                    ▼                      ▼
+│          ▼                    │                      │               │
+│  ┌───────────────┐            │                      │               │
+│  │ Google Token  │            │                      │               │
+│  │   Service     │◄───────────┼──────────────────────┘               │
+│  │ (encrypted)   │            │                                      │
+│  └───────┬───────┘            │                                      │
+│          │                    │                                      │
+└──────────┼────────────────────┼──────────────────────────────────────┘
+           │                    │
+           ▼                    ▼
     ┌─────────────┐      ┌─────────────┐       ┌─────────────┐
     │   Google    │      │  Anthropic  │       │  ElevenLabs │
     │  Calendar   │      │  Claude API │       │     API     │
     │     API     │      └─────────────┘       └─────────────┘
     └─────────────┘
+           ▲
+           │
+    ┌─────────────┐
+    │  PostgreSQL │
+    │  (Supabase) │
+    │  encrypted  │
+    │   tokens    │
+    └─────────────┘
 ```
 
-**Key Points:**
-- **All external APIs** are called through the backend for consistency and security
-- Frontend passes the Google OAuth token to backend via `X-Google-Token` header
-- Google token is short-lived (~1 hour) - users see a "Reconnect" banner after expiry
+**Key Security Features (BFF Pattern):**
+- Google refresh tokens are stored **encrypted** in the database (Fernet encryption)
+- Frontend **never** handles Google tokens after the initial OAuth callback
+- Backend automatically refreshes access tokens when needed
+- All Google API calls happen server-side
 
 ## Tech Stack
 
@@ -59,9 +76,12 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 - **AI Text Generation**: Anthropic Claude (claude-sonnet-4-20250514)
 - **Text-to-Speech**: ElevenLabs SDK (streaming)
 - **Auth Validation**: Supabase (JWT verification)
+- **ORM**: SQLAlchemy 2.0 (async)
+- **Migrations**: Alembic
+- **Token Encryption**: Cryptography (Fernet)
 
 ### Infrastructure
-- **Auth & Database**: Supabase
+- **Auth & Database**: Supabase (PostgreSQL)
 - **Package Manager**: pnpm (monorepo)
 
 ## Project Structure
@@ -101,12 +121,21 @@ gaffer/
 │       │   ├── routers/
 │       │   │   ├── hype.py           # /hype endpoints
 │       │   │   ├── calendar.py       # /calendar endpoints
-│       │   │   └── auth.py           # /auth endpoints
+│       │   │   └── auth.py           # /auth endpoints (token storage)
 │       │   ├── services/
 │       │   │   ├── hype_generator.py # Claude integration
+│       │   │   ├── google_token_service.py  # Token encryption & refresh
+│       │   │   ├── database.py       # SQLAlchemy async engine
 │       │   │   └── supabase_client.py
+│       │   ├── models/               # SQLAlchemy models
+│       │   │   ├── base.py
+│       │   │   └── user_google_token.py
 │       │   └── prompts/
 │       │       └── manager_styles.py # Manager personalities
+│       ├── migrations/               # Alembic migrations
+│       │   ├── env.py
+│       │   └── versions/
+│       ├── alembic.ini
 │       ├── requirements.txt
 │       └── .env
 │
@@ -122,14 +151,34 @@ gaffer/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Health check |
-| `/calendar/events` | GET | Fetch calendar events from Google Calendar |
+| `/auth/store-google-token` | POST | Store encrypted Google refresh token |
+| `/auth/google-token-status` | GET | Check if user has stored token |
+| `/auth/google-token` | DELETE | Revoke stored tokens |
+| `/calendar/events` | GET | Fetch calendar events (uses stored tokens) |
 | `/hype/generate` | POST | Generate motivational text using Claude |
 | `/hype/audio` | POST | Stream TTS audio from ElevenLabs |
+
+#### POST `/auth/store-google-token`
+```
+Headers:
+  Authorization: Bearer <supabase_jwt>
+
+Body:
+{
+  "refresh_token": "<google_refresh_token>"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Token stored successfully"
+}
+```
 
 #### GET `/calendar/events`
 ```
 Headers:
-  X-Google-Token: <google_access_token>
+  Authorization: Bearer <supabase_jwt>
 
 Query Parameters:
   time_min: ISO datetime (optional, defaults to now)
@@ -220,9 +269,19 @@ VITE_API_URL=http://localhost:8000
 APP_ENV=development
 FRONTEND_URL=http://localhost:3000
 
+# Database (get from Supabase Dashboard → Settings → Database → Connection string)
+DATABASE_URL=postgresql+asyncpg://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres
+
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Google OAuth (for server-side token refresh)
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+
+# Token encryption key (generate with command below)
+TOKEN_ENCRYPTION_KEY=your-fernet-key
 
 # Anthropic
 ANTHROPIC_API_KEY=sk-ant-...
@@ -230,6 +289,11 @@ ANTHROPIC_API_KEY=sk-ant-...
 # ElevenLabs
 ELEVENLABS_API_KEY=your_elevenlabs_key
 ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb
+```
+
+Generate a Fernet encryption key:
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 ### 3. Configure Supabase Auth
@@ -244,8 +308,16 @@ ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb
 1. Create OAuth 2.0 credentials
 2. Add authorized redirect URI: `https://your-project.supabase.co/auth/v1/callback`
 3. Enable Google Calendar API
+4. Copy Client ID and Client Secret to backend `.env`
 
-### 5. Run the Apps
+### 5. Run Database Migrations
+
+```bash
+cd apps/api
+pnpm run db:migrate
+```
+
+### 6. Run the Apps
 
 ```bash
 # Terminal 1: Frontend
@@ -254,13 +326,30 @@ pnpm dev
 
 # Terminal 2: Backend
 cd apps/api
-source .venv/bin/activate
-uvicorn app.main:app --reload --port 8000
+pnpm run dev
 ```
 
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
 - API Docs: http://localhost:8000/docs
+
+## Database Commands
+
+```bash
+cd apps/api
+
+# Apply pending migrations
+pnpm run db:migrate
+
+# Rollback last migration
+pnpm run db:rollback
+
+# Auto-generate migration from model changes
+pnpm run db:generate "description"
+
+# Show current migration version
+pnpm run db:status
+```
 
 ## Manager Personalities
 
@@ -272,21 +361,29 @@ uvicorn app.main:app --reload --port 8000
 | **Pep Guardiola** | Tactical, cerebral, control-focused |
 | **Marcelo Bielsa** | Philosophical, dignified, principled |
 
-## Flow
+## Authentication Flow
 
-1. User logs in with Google via Supabase Auth (grants calendar read access)
-2. Frontend receives Google OAuth token from Supabase session
-3. Frontend calls backend `/calendar/events` with token in `X-Google-Token` header
-4. Backend fetches events from Google Calendar API and returns them
-5. Dashboard displays upcoming events
-6. User selects a manager personality
-7. User clicks "Hype Me" on an event
-8. Frontend calls backend `/hype/generate` → Claude generates motivational text
-9. Text is displayed immediately while audio generates
-10. Frontend calls backend `/hype/audio` → ElevenLabs streams TTS audio
-11. User listens to their personalized team talk
+```
+1. User clicks "Sign in with Google"
+2. Supabase redirects to Google OAuth with calendar.readonly scope
+3. User grants permission, Google redirects back with tokens
+4. Supabase session includes provider_refresh_token (one-time)
+5. Frontend immediately sends refresh token to backend /auth/store-google-token
+6. Backend encrypts token and stores in user_google_tokens table
+7. Frontend discards Google tokens - only keeps Supabase JWT
+8. All subsequent API calls use Supabase JWT for auth
+9. Backend retrieves encrypted refresh token, exchanges for access token
+10. Access tokens cached in memory (~50 min TTL)
+11. If refresh token revoked, user sees "Reconnect Google" banner
+```
 
-**Note:** Google token is only available immediately after OAuth login (~1 hour lifetime). If the page is refreshed or token expires, user sees a "Reconnect Google" banner to re-authenticate.
+## Security
+
+- **Tokens encrypted at rest**: Google refresh tokens stored with Fernet encryption
+- **BFF pattern**: Frontend never handles Google tokens after initial OAuth
+- **Short-lived access tokens**: Cached for 50 minutes, auto-refreshed
+- **RLS enabled**: Database row-level security on token table
+- **Service role key**: Backend uses Supabase service role for DB access
 
 ## License
 
