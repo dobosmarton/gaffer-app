@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Megaphone } from "lucide-react";
+import { Megaphone, Play, Pause } from "lucide-react";
+import { useState, useRef } from "react";
 import { getCurrentUser } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
@@ -13,6 +14,24 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-900">
       {/* Decorative elements */}
@@ -75,17 +94,36 @@ function LandingPage() {
                 SAMPLE HYPE
               </span>
             </div>
-            <p className="text-lg italic text-slate-200 leading-relaxed">
-              "RIGHT, LISTEN UP. This is it. The board room. 2 PM. They're gonna come at you with
-              spreadsheets, they're gonna question your projections. But YOU — you've done the prep.
-              You walk in there, you OWN that room. Now get out there and make me proud."
-            </p>
-            <div className="mt-4 flex items-center gap-2">
+            <div className="flex gap-6">
+              <button
+                onClick={togglePlay}
+                className="flex-shrink-0 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/30"
+                aria-label={isPlaying ? "Pause" : "Play sample"}
+              >
+                {isPlaying ? (
+                  <Pause className="h-6 w-6" />
+                ) : (
+                  <Play className="h-6 w-6 ml-1" />
+                )}
+              </button>
+              <p className="text-lg italic text-slate-200 leading-relaxed text-left">
+                "RIGHT, LISTEN UP. This is it. The board room. 2 PM. They're gonna come at you with
+                spreadsheets, they're gonna question your projections. But YOU — you've done the
+                prep. You walk in there, you OWN that room. Now get out there and make me proud."
+              </p>
+            </div>
+            <div className="mt-4 flex items-center gap-2 ml-20">
               <span className="text-xl">🏆</span>
               <p className="text-sm font-medium text-slate-400">
                 Sir Alex Ferguson mode • Q3 Budget Review
               </p>
             </div>
+            <audio
+              ref={audioRef}
+              src="/samples/ferguson-sample.mp3"
+              onEnded={handleAudioEnded}
+              preload="none"
+            />
           </div>
         </div>
       </div>
