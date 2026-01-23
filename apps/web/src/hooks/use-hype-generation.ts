@@ -79,7 +79,10 @@ export const useHypeGeneration = () => {
       const audioResponse = await fetch(`${API_URL}/hype/audio`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: textData.audio_text }),
+        body: JSON.stringify({
+          text: textData.audio_text,
+          manager: manager, // Pass manager to select custom voice
+        }),
       });
 
       if (!audioResponse.ok) {
