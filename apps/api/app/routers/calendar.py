@@ -5,8 +5,10 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.routers.auth import get_user_id_from_token
+from app.services.database import get_db
 from app.services.calendar_sync_service import (
     CalendarSyncError,
     CalendarSyncService,
@@ -66,6 +68,7 @@ class SyncResponse(BaseModel):
 async def sync_calendar(
     force_full: bool = False,
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     sync_service: CalendarSyncService = Depends(get_calendar_sync_service),
 ):
     """Sync calendar events from Google Calendar.
@@ -77,7 +80,7 @@ async def sync_calendar(
         force_full: Force a full sync instead of incremental
     """
     try:
-        result = await sync_service.sync_calendar(user_id, force_full=force_full)
+        result = await sync_service.sync_calendar(db, user_id, force_full=force_full)
         return SyncResponse(
             success=True,
             events_added=result.events_added,
@@ -112,6 +115,7 @@ async def get_calendar_events(
     max_results: int = 10,
     use_cache: bool = True,
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     token_service: GoogleTokenService = Depends(get_google_token_service),
     sync_service: CalendarSyncService = Depends(get_calendar_sync_service),
 ):
@@ -132,11 +136,11 @@ async def get_calendar_events(
     if use_cache:
         try:
             cached_events = await sync_service.get_cached_events(
-                user_id, time_min, time_max, max_results
+                db, user_id, time_min, time_max, max_results
             )
 
             # Get last sync time
-            sync_state = await sync_service.get_sync_state(user_id)
+            sync_state = await sync_service.get_sync_state(db, user_id)
             last_sync = None
             if sync_state and sync_state.get("last_sync"):
                 last_sync = datetime.fromisoformat(
@@ -146,12 +150,12 @@ async def get_calendar_events(
             # Auto-sync if cache is empty and never synced before
             if not cached_events and not last_sync:
                 logger.info(f"Empty cache and no sync history for user {user_id[:8]}..., triggering auto-sync")
-                await sync_service.sync_calendar(user_id, force_full=True)
+                await sync_service.sync_calendar(db, user_id, force_full=True)
                 # Re-fetch from cache after sync
                 cached_events = await sync_service.get_cached_events(
-                    user_id, time_min, time_max, max_results
+                    db, user_id, time_min, time_max, max_results
                 )
-                sync_state = await sync_service.get_sync_state(user_id)
+                sync_state = await sync_service.get_sync_state(db, user_id)
                 if sync_state and sync_state.get("last_sync"):
                     last_sync = datetime.fromisoformat(
                         sync_state["last_sync"].replace("Z", "+00:00")
@@ -186,7 +190,7 @@ async def get_calendar_events(
 
     # Get access token from secure storage (handles refresh automatically)
     try:
-        access_token = await token_service.get_access_token(user_id)
+        access_token = await token_service.get_access_token(db, user_id)
     except NoRefreshTokenError:
         logger.info(f"User {user_id[:8]}... needs to authenticate with Google")
         raise HTTPException(

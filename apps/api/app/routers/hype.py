@@ -6,9 +6,11 @@ from elevenlabs import ElevenLabs, VoiceSettings
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.routers.auth import get_user_id_from_token
+from app.services.database import get_db
 from app.services.hype_generator import (
     generate_hype_text,
     sanitize_audio_tags,
@@ -78,6 +80,7 @@ class HypeHistoryResponse(BaseModel):
 async def generate_hype(
     request: GenerateHypeRequest,
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     storage_service: HypeStorageService = Depends(get_hype_storage_service),
 ):
     """Generate hype text using Claude and optionally persist to database."""
@@ -91,6 +94,7 @@ async def generate_hype(
                 request.event_time.replace("Z", "+00:00")
             )
             hype_record = await storage_service.create_hype_record(
+                db=db,
                 user_id=user_id,
                 event_title=request.event_title,
                 event_time=event_time,
@@ -119,6 +123,7 @@ async def generate_hype(
     if hype_record:
         try:
             hype_record = await storage_service.update_with_text(
+                db=db,
                 record_id=hype_record.id,
                 hype_text=hype_text,
                 audio_text=audio_text,
@@ -140,6 +145,7 @@ async def generate_audio(
     request: AudioRequest,
     settings: Settings = Depends(get_settings),
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     storage_service: HypeStorageService = Depends(get_hype_storage_service),
 ):
     """Generate audio from ElevenLabs text-to-speech.
@@ -178,6 +184,7 @@ async def generate_audio(
 
             # Upload to Supabase Storage
             audio_url = await storage_service.upload_audio(
+                db=db,
                 record_id=request.hype_id,
                 user_id=user_id,
                 audio_data=audio_bytes,
@@ -223,6 +230,7 @@ async def get_hype_history(
     google_event_id: Optional[str] = None,
     limit: int = 20,
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     storage_service: HypeStorageService = Depends(get_hype_storage_service),
 ):
     """Get hype generation history.
@@ -230,6 +238,7 @@ async def get_hype_history(
     Optionally filter by Google Calendar event ID.
     """
     records = await storage_service.get_hype_history(
+        db=db,
         user_id=user_id,
         google_event_id=google_event_id,
         limit=limit,
@@ -256,10 +265,11 @@ async def get_hype_history(
 async def get_hype_record(
     hype_id: str,
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     storage_service: HypeStorageService = Depends(get_hype_storage_service),
 ):
     """Get a specific hype record by ID."""
-    record = await storage_service.get_hype_record(hype_id)
+    record = await storage_service.get_hype_record(db, hype_id)
 
     if not record:
         raise HTTPException(status_code=404, detail="Hype record not found")

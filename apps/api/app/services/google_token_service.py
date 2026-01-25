@@ -12,9 +12,12 @@ from typing import Optional
 
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
+from sqlalchemy import select, delete
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
-from app.services.supabase_client import get_supabase_client
+from app.models import UserGoogleToken
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +52,6 @@ class GoogleTokenService:
 
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.supabase = get_supabase_client(settings)
         self._fernet = Fernet(settings.token_encryption_key.encode())
 
     def _encrypt_token(self, token: str) -> str:
@@ -64,44 +66,48 @@ class GoogleTokenService:
             logger.error("Failed to decrypt token - encryption key may have changed")
             raise GoogleTokenError("Token decryption failed")
 
-    async def store_refresh_token(self, user_id: str, refresh_token: str) -> None:
+    async def store_refresh_token(
+        self, db: AsyncSession, user_id: str, refresh_token: str
+    ) -> None:
         """Store an encrypted refresh token for a user."""
         encrypted_token = self._encrypt_token(refresh_token)
+        now = datetime.now(timezone.utc)
 
         try:
-            self.supabase.table("user_google_tokens").upsert(
-                {
-                    "user_id": user_id,
+            stmt = insert(UserGoogleToken).values(
+                user_id=user_id,
+                refresh_token=encrypted_token,
+                updated_at=now,
+            ).on_conflict_do_update(
+                index_elements=["user_id"],
+                set_={
                     "refresh_token": encrypted_token,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }
-            ).execute()
+                    "updated_at": now,
+                },
+            )
+            await db.execute(stmt)
+            await db.commit()
             logger.info(f"Stored refresh token for user {user_id[:8]}...")
         except Exception as e:
+            await db.rollback()
             logger.error(f"Failed to store refresh token: {e}")
             raise GoogleTokenError("Failed to store refresh token")
 
-    async def get_refresh_token(self, user_id: str) -> str:
+    async def get_refresh_token(self, db: AsyncSession, user_id: str) -> str:
         """Retrieve and decrypt the refresh token for a user."""
         try:
-            response = (
-                self.supabase.table("user_google_tokens")
-                .select("refresh_token")
-                .eq("user_id", user_id)
-                .single()
-                .execute()
+            stmt = select(UserGoogleToken.refresh_token).where(
+                UserGoogleToken.user_id == user_id
             )
+            result = await db.execute(stmt)
+            row = result.scalar_one_or_none()
         except Exception:
-            response = None
+            row = None
 
-        if not response or not response.data:
+        if not row:
             raise NoRefreshTokenError("No refresh token found for user")
 
-        encrypted_token = response.data.get("refresh_token")
-        if not encrypted_token:
-            raise NoRefreshTokenError("No refresh token found for user")
-
-        return self._decrypt_token(encrypted_token)
+        return self._decrypt_token(row)
 
     async def _exchange_refresh_token(self, refresh_token: str) -> tuple[str, Optional[str]]:
         """Exchange a refresh token for a new access token.
@@ -139,7 +145,7 @@ class GoogleTokenService:
 
             return access_token, new_refresh_token
 
-    async def get_access_token(self, user_id: str) -> str:
+    async def get_access_token(self, db: AsyncSession, user_id: str) -> str:
         """Get a valid access token for a user.
 
         This method:
@@ -157,7 +163,7 @@ class GoogleTokenService:
                 return token
 
         # Cache miss or expired - get refresh token from DB
-        refresh_token = await self.get_refresh_token(user_id)
+        refresh_token = await self.get_refresh_token(db, user_id)
 
         # Exchange for access token
         access_token, new_refresh_token = await self._exchange_refresh_token(refresh_token)
@@ -170,27 +176,30 @@ class GoogleTokenService:
         # If Google issued a new refresh token, update our stored one
         if new_refresh_token and new_refresh_token != refresh_token:
             logger.info(f"Google issued new refresh token for user {user_id[:8]}..., updating")
-            await self.store_refresh_token(user_id, new_refresh_token)
+            await self.store_refresh_token(db, user_id, new_refresh_token)
 
         return access_token
 
-    async def revoke_tokens(self, user_id: str) -> None:
+    async def revoke_tokens(self, db: AsyncSession, user_id: str) -> None:
         """Remove all tokens for a user (e.g., on logout or disconnect)."""
         # Remove from cache
         _access_token_cache.pop(user_id, None)
 
         # Remove from database
         try:
-            self.supabase.table("user_google_tokens").delete().eq("user_id", user_id).execute()
+            stmt = delete(UserGoogleToken).where(UserGoogleToken.user_id == user_id)
+            await db.execute(stmt)
+            await db.commit()
             logger.info(f"Revoked tokens for user {user_id[:8]}...")
         except Exception as e:
+            await db.rollback()
             logger.error(f"Failed to revoke tokens: {e}")
             raise GoogleTokenError("Failed to revoke tokens")
 
-    async def has_refresh_token(self, user_id: str) -> bool:
+    async def has_refresh_token(self, db: AsyncSession, user_id: str) -> bool:
         """Check if a user has a stored refresh token."""
         try:
-            await self.get_refresh_token(user_id)
+            await self.get_refresh_token(db, user_id)
             return True
         except NoRefreshTokenError:
             return False

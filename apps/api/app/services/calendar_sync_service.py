@@ -15,15 +15,19 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
+from sqlalchemy import select, update, and_, or_
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
+from app.models import CalendarEvent as CalendarEventModel
+from app.models import CalendarSyncState as CalendarSyncStateModel
+from app.models import HypeRecord as HypeRecordModel
 from app.services.google_token_service import (
     GoogleTokenService,
     NoRefreshTokenError,
     TokenRefreshError,
-    get_google_token_service,
 )
-from app.services.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
@@ -80,36 +84,46 @@ class CalendarSyncService:
 
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.supabase = get_supabase_client(settings)
         self.token_service = GoogleTokenService(settings)
 
-    async def get_sync_state(self, user_id: str) -> dict:
+    async def get_sync_state(self, db: AsyncSession, user_id: str) -> dict:
         """Get the sync state for a user."""
         try:
-            response = (
-                self.supabase.table("calendar_sync_state")
-                .select("*")
-                .eq("user_id", user_id)
-                .single()
-                .execute()
+            stmt = select(CalendarSyncStateModel).where(
+                CalendarSyncStateModel.user_id == user_id
             )
-            return response.data or {}
+            result = await db.execute(stmt)
+            state = result.scalar_one_or_none()
+            if state:
+                return {
+                    "user_id": str(state.user_id),
+                    "last_sync": state.last_sync.isoformat() if state.last_sync else None,
+                    "updated_at": state.updated_at.isoformat() if state.updated_at else None,
+                }
+            return {}
         except Exception:
             return {}
 
-    async def update_sync_state(self, user_id: str) -> None:
+    async def update_sync_state(self, db: AsyncSession, user_id: str) -> None:
         """Update the sync state for a user."""
-        now = datetime.now(timezone.utc).isoformat()
-        data = {
-            "user_id": user_id,
-            "last_sync": now,
-            "updated_at": now,
-        }
-        self.supabase.table("calendar_sync_state").upsert(data).execute()
+        now = datetime.now(timezone.utc)
+        stmt = insert(CalendarSyncStateModel).values(
+            user_id=user_id,
+            last_sync=now,
+            updated_at=now,
+        ).on_conflict_do_update(
+            index_elements=["user_id"],
+            set_={
+                "last_sync": now,
+                "updated_at": now,
+            },
+        )
+        await db.execute(stmt)
+        await db.commit()
 
-    async def should_sync(self, user_id: str) -> bool:
+    async def should_sync(self, db: AsyncSession, user_id: str) -> bool:
         """Check if enough time has passed since last sync."""
-        state = await self.get_sync_state(user_id)
+        state = await self.get_sync_state(db, user_id)
         if not state or not state.get("last_sync"):
             return True
 
@@ -118,6 +132,7 @@ class CalendarSyncService:
 
     async def _fetch_events_from_google(
         self,
+        db: AsyncSession,
         user_id: str,
         updated_min: Optional[datetime] = None,
     ) -> tuple[list[dict], bool]:
@@ -133,7 +148,7 @@ class CalendarSyncService:
         Returns:
             Tuple of (events, has_deleted)
         """
-        access_token = await self.token_service.get_access_token(user_id)
+        access_token = await self.token_service.get_access_token(db, user_id)
         all_events: list[dict] = []
         page_token: Optional[str] = None
 
@@ -193,11 +208,11 @@ class CalendarSyncService:
         return all_events, has_deleted
 
     async def _store_events(
-        self, user_id: str, events: list[dict], is_incremental: bool = False
+        self, db: AsyncSession, user_id: str, events: list[dict], is_incremental: bool = False
     ) -> SyncResult:
         """Store events in the database."""
         result = SyncResult(is_full_sync=not is_incremental)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         for event in events:
             google_event_id = event.get("id")
@@ -207,9 +222,17 @@ class CalendarSyncService:
             # Check if event is deleted
             if event.get("status") == "cancelled":
                 # Mark as deleted in our database
-                self.supabase.table("calendar_events").update(
-                    {"is_deleted": True, "synced_at": now}
-                ).eq("user_id", user_id).eq("google_event_id", google_event_id).execute()
+                stmt = (
+                    update(CalendarEventModel)
+                    .where(
+                        and_(
+                            CalendarEventModel.user_id == user_id,
+                            CalendarEventModel.google_event_id == google_event_id,
+                        )
+                    )
+                    .values(is_deleted=True, synced_at=now)
+                )
+                await db.execute(stmt)
                 result.events_deleted += 1
                 continue
 
@@ -232,28 +255,38 @@ class CalendarSyncService:
                 logger.warning(f"Failed to parse event {google_event_id}: {e}")
                 continue
 
-            event_data = {
-                "user_id": user_id,
-                "google_event_id": google_event_id,
-                "title": event.get("summary", "Untitled Event"),
-                "description": event.get("description"),
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
-                "location": event.get("location"),
-                "attendees_count": (
+            # Upsert event using PostgreSQL ON CONFLICT
+            stmt = insert(CalendarEventModel).values(
+                user_id=user_id,
+                google_event_id=google_event_id,
+                title=event.get("summary", "Untitled Event"),
+                description=event.get("description"),
+                start_time=start_time,
+                end_time=end_time,
+                location=event.get("location"),
+                attendees_count=(
                     len(event.get("attendees", [])) if event.get("attendees") else None
                 ),
-                "etag": event.get("etag"),
-                "synced_at": now,
-                "is_deleted": False,
-            }
-
-            # Upsert event
-            response = (
-                self.supabase.table("calendar_events")
-                .upsert(event_data, on_conflict="user_id,google_event_id")
-                .execute()
+                etag=event.get("etag"),
+                synced_at=now,
+                is_deleted=False,
+            ).on_conflict_do_update(
+                constraint="unique_user_google_event",
+                set_={
+                    "title": event.get("summary", "Untitled Event"),
+                    "description": event.get("description"),
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "location": event.get("location"),
+                    "attendees_count": (
+                        len(event.get("attendees", [])) if event.get("attendees") else None
+                    ),
+                    "etag": event.get("etag"),
+                    "synced_at": now,
+                    "is_deleted": False,
+                },
             )
+            await db.execute(stmt)
 
             # Check if it was an insert or update based on etag comparison
             # For simplicity, count all as "added" for full sync, "updated" for incremental
@@ -262,10 +295,11 @@ class CalendarSyncService:
             else:
                 result.events_added += 1
 
+        await db.commit()
         return result
 
     async def sync_calendar(
-        self, user_id: str, force_full: bool = False
+        self, db: AsyncSession, user_id: str, force_full: bool = False
     ) -> SyncResult:
         """
         Sync calendar events for a user.
@@ -275,13 +309,14 @@ class CalendarSyncService:
         - Incremental sync: fetches events updated since last sync
 
         Args:
+            db: Database session
             user_id: The user's ID
             force_full: Force a full sync instead of incremental
 
         Returns:
             SyncResult with counts of added/updated/deleted events
         """
-        state = await self.get_sync_state(user_id)
+        state = await self.get_sync_state(db, user_id)
         last_sync = None
         if not force_full and state and state.get("last_sync"):
             last_sync = datetime.fromisoformat(
@@ -292,18 +327,18 @@ class CalendarSyncService:
             # Incremental sync - only get events updated since last sync
             logger.info(f"Starting incremental sync for user {user_id[:8]}... (since {last_sync})")
             events, _ = await self._fetch_events_from_google(
-                user_id, updated_min=last_sync
+                db, user_id, updated_min=last_sync
             )
-            result = await self._store_events(user_id, events, is_incremental=True)
+            result = await self._store_events(db, user_id, events, is_incremental=True)
         else:
             # Full sync - get all events in time window
             logger.info(f"Starting full sync for user {user_id[:8]}...")
-            events, _ = await self._fetch_events_from_google(user_id)
-            result = await self._store_events(user_id, events, is_incremental=False)
+            events, _ = await self._fetch_events_from_google(db, user_id)
+            result = await self._store_events(db, user_id, events, is_incremental=False)
             result.is_full_sync = True
 
         # Update sync state
-        await self.update_sync_state(user_id)
+        await self.update_sync_state(db, user_id)
 
         logger.info(
             f"Sync complete for user {user_id[:8]}...: "
@@ -315,6 +350,7 @@ class CalendarSyncService:
 
     async def get_cached_events(
         self,
+        db: AsyncSession,
         user_id: str,
         time_min: Optional[datetime] = None,
         time_max: Optional[datetime] = None,
@@ -328,6 +364,7 @@ class CalendarSyncService:
         - Are currently ongoing (started before time_min but end after time_min)
 
         Args:
+            db: Database session
             user_id: The user's ID
             time_min: Reference time (defaults to now)
             time_max: Maximum start time (defaults to 24 hours from time_min)
@@ -345,70 +382,72 @@ class CalendarSyncService:
         # 1. Start within the time window (start_time >= time_min AND start_time <= time_max)
         # 2. Are ongoing (start_time < time_min AND end_time > time_min)
         # Using OR filter: end_time > time_min AND start_time <= time_max
-        response = (
-            self.supabase.table("calendar_events")
-            .select("*")
-            .eq("user_id", user_id)
-            .eq("is_deleted", False)
-            .gt("end_time", time_min.isoformat())  # Event hasn't ended yet
-            .lte("start_time", time_max.isoformat())  # Event starts before window ends
-            .order("start_time")
+        stmt = (
+            select(CalendarEventModel)
+            .where(
+                and_(
+                    CalendarEventModel.user_id == user_id,
+                    CalendarEventModel.is_deleted == False,
+                    CalendarEventModel.end_time > time_min,
+                    CalendarEventModel.start_time <= time_max,
+                )
+            )
+            .order_by(CalendarEventModel.start_time)
             .limit(max_results)
-            .execute()
         )
+        result = await db.execute(stmt)
+        event_rows = result.scalars().all()
 
-        if not response.data:
+        if not event_rows:
             return []
 
         # Get google_event_ids to fetch latest hype
-        google_event_ids = [row["google_event_id"] for row in response.data]
+        google_event_ids = [row.google_event_id for row in event_rows]
 
         # Fetch latest hype records for these events
         # We get all hype records and will pick the latest per event
-        hype_response = (
-            self.supabase.table("hype_records")
-            .select("google_event_id, hype_text, audio_url, manager_style, created_at")
-            .eq("user_id", user_id)
-            .in_("google_event_id", google_event_ids)
-            .in_("status", ["text_ready", "audio_ready"])
-            .order("created_at", desc=True)
-            .execute()
+        hype_stmt = (
+            select(HypeRecordModel)
+            .where(
+                and_(
+                    HypeRecordModel.user_id == user_id,
+                    HypeRecordModel.google_event_id.in_(google_event_ids),
+                    HypeRecordModel.status.in_(["text_ready", "audio_ready"]),
+                )
+            )
+            .order_by(HypeRecordModel.created_at.desc())
         )
+        hype_result = await db.execute(hype_stmt)
+        hype_rows = hype_result.scalars().all()
 
         # Build a map of google_event_id -> latest hype (first one per event since ordered desc)
         latest_hype_map: dict[str, LatestHypeData] = {}
-        for hype_row in hype_response.data or []:
-            gid = hype_row["google_event_id"]
-            if gid not in latest_hype_map:
+        for hype_row in hype_rows:
+            gid = hype_row.google_event_id
+            if gid and gid not in latest_hype_map:
                 latest_hype_map[gid] = LatestHypeData(
-                    hype_text=hype_row.get("hype_text"),
-                    audio_url=hype_row.get("audio_url"),
-                    manager_style=hype_row.get("manager_style", "ferguson"),
+                    hype_text=hype_row.hype_text,
+                    audio_url=hype_row.audio_url,
+                    manager_style=hype_row.manager_style or "ferguson",
                 )
 
         events = []
-        for row in response.data:
-            google_event_id = row["google_event_id"]
+        for row in event_rows:
+            google_event_id = row.google_event_id
             events.append(
                 CachedEvent(
-                    id=row["id"],
-                    user_id=row["user_id"],
+                    id=str(row.id),
+                    user_id=str(row.user_id),
                     google_event_id=google_event_id,
-                    title=row["title"],
-                    description=row.get("description"),
-                    start_time=datetime.fromisoformat(
-                        row["start_time"].replace("Z", "+00:00")
-                    ),
-                    end_time=datetime.fromisoformat(
-                        row["end_time"].replace("Z", "+00:00")
-                    ),
-                    location=row.get("location"),
-                    attendees_count=row.get("attendees_count"),
-                    etag=row.get("etag"),
-                    synced_at=datetime.fromisoformat(
-                        row["synced_at"].replace("Z", "+00:00")
-                    ),
-                    is_deleted=row.get("is_deleted", False),
+                    title=row.title,
+                    description=row.description,
+                    start_time=row.start_time,
+                    end_time=row.end_time,
+                    location=row.location,
+                    attendees_count=row.attendees_count,
+                    etag=row.etag,
+                    synced_at=row.synced_at,
+                    is_deleted=row.is_deleted,
                     latest_hype=latest_hype_map.get(google_event_id),
                 )
             )

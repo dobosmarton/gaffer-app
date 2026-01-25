@@ -9,9 +9,13 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
+
+from sqlalchemy import select, update, and_
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
+from app.models import HypeRecord as HypeRecordModel
+from app.models import CalendarEvent as CalendarEventModel
 from app.services.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
@@ -47,28 +51,30 @@ class HypeStorageService:
 
     def __init__(self, settings: Settings):
         self.settings = settings
+        # Keep Supabase only for storage operations
         self.supabase = get_supabase_client(settings)
 
     async def _get_calendar_event_id(
-        self, user_id: str, google_event_id: str
+        self, db: AsyncSession, user_id: str, google_event_id: str
     ) -> Optional[str]:
         """Look up our internal calendar_event_id from a google_event_id."""
         try:
-            response = (
-                self.supabase.table("calendar_events")
-                .select("id")
-                .eq("user_id", user_id)
-                .eq("google_event_id", google_event_id)
-                .eq("is_deleted", False)
-                .single()
-                .execute()
+            stmt = select(CalendarEventModel.id).where(
+                and_(
+                    CalendarEventModel.user_id == user_id,
+                    CalendarEventModel.google_event_id == google_event_id,
+                    CalendarEventModel.is_deleted == False,
+                )
             )
-            return response.data["id"] if response.data else None
+            result = await db.execute(stmt)
+            row = result.scalar_one_or_none()
+            return str(row) if row else None
         except Exception:
             return None
 
     async def create_hype_record(
         self,
+        db: AsyncSession,
         user_id: str,
         event_title: str,
         event_time: datetime,
@@ -80,6 +86,7 @@ class HypeStorageService:
         Create a new hype record with pending status.
 
         Args:
+            db: Database session
             user_id: The user's ID
             event_title: Title of the event
             event_time: Start time of the event
@@ -90,40 +97,39 @@ class HypeStorageService:
         Returns:
             The created HypeRecord
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         # Look up calendar_event_id from google_event_id if not provided
         if google_event_id and not calendar_event_id:
-            calendar_event_id = await self._get_calendar_event_id(user_id, google_event_id)
+            calendar_event_id = await self._get_calendar_event_id(db, user_id, google_event_id)
             if calendar_event_id:
                 logger.info(f"Found calendar_event_id {calendar_event_id[:8]}... for google_event_id {google_event_id[:8]}...")
 
-        data = {
-            "user_id": user_id,
-            "event_title": event_title,
-            "event_time": event_time.isoformat(),
-            "manager_style": manager_style,
-            "status": "pending",
-            "created_at": now,
-            "updated_at": now,
-        }
-
-        if google_event_id:
-            data["google_event_id"] = google_event_id
-        if calendar_event_id:
-            data["calendar_event_id"] = calendar_event_id
-
         try:
-            response = self.supabase.table("hype_records").insert(data).execute()
-            row = response.data[0]
-            logger.info(f"Created hype record {row['id']} for user {user_id[:8]}...")
-            return self._row_to_record(row)
+            record = HypeRecordModel(
+                user_id=user_id,
+                event_title=event_title,
+                event_time=event_time,
+                manager_style=manager_style,
+                status="pending",
+                google_event_id=google_event_id,
+                calendar_event_id=calendar_event_id,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(record)
+            await db.commit()
+            await db.refresh(record)
+            logger.info(f"Created hype record {record.id} for user {user_id[:8]}...")
+            return self._model_to_record(record)
         except Exception as e:
+            await db.rollback()
             logger.error(f"Failed to create hype record: {e}")
             raise HypeStorageError(f"Failed to create hype record: {e}")
 
     async def update_with_text(
         self,
+        db: AsyncSession,
         record_id: str,
         hype_text: str,
         audio_text: str,
@@ -132,6 +138,7 @@ class HypeStorageService:
         Update a hype record with generated text.
 
         Args:
+            db: Database session
             record_id: The hype record ID
             hype_text: Clean text for display
             audio_text: Text with emotion tags for TTS
@@ -139,29 +146,33 @@ class HypeStorageService:
         Returns:
             The updated HypeRecord
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         try:
-            response = (
-                self.supabase.table("hype_records")
-                .update({
-                    "hype_text": hype_text,
-                    "audio_text": audio_text,
-                    "status": "text_ready",
-                    "updated_at": now,
-                })
-                .eq("id", record_id)
-                .execute()
+            stmt = (
+                update(HypeRecordModel)
+                .where(HypeRecordModel.id == record_id)
+                .values(
+                    hype_text=hype_text,
+                    audio_text=audio_text,
+                    status="text_ready",
+                    updated_at=now,
+                )
+                .returning(HypeRecordModel)
             )
-            row = response.data[0]
+            result = await db.execute(stmt)
+            await db.commit()
+            record = result.scalar_one()
             logger.info(f"Updated hype record {record_id} with text")
-            return self._row_to_record(row)
+            return self._model_to_record(record)
         except Exception as e:
+            await db.rollback()
             logger.error(f"Failed to update hype record with text: {e}")
             raise HypeStorageError(f"Failed to update hype record: {e}")
 
     async def upload_audio(
         self,
+        db: AsyncSession,
         record_id: str,
         user_id: str,
         audio_data: bytes,
@@ -170,6 +181,7 @@ class HypeStorageService:
         Upload audio to Supabase Storage and update the record.
 
         Args:
+            db: Database session
             record_id: The hype record ID
             user_id: The user's ID
             audio_data: Raw audio bytes (MP3)
@@ -177,7 +189,7 @@ class HypeStorageService:
         Returns:
             The public URL of the uploaded audio
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         file_path = f"{user_id}/{record_id}.mp3"
 
         try:
@@ -193,12 +205,18 @@ class HypeStorageService:
                 file_path
             )
 
-            # Update record with audio URL
-            self.supabase.table("hype_records").update({
-                "audio_url": audio_url,
-                "status": "audio_ready",
-                "updated_at": now,
-            }).eq("id", record_id).execute()
+            # Update record with audio URL using SQLAlchemy
+            stmt = (
+                update(HypeRecordModel)
+                .where(HypeRecordModel.id == record_id)
+                .values(
+                    audio_url=audio_url,
+                    status="audio_ready",
+                    updated_at=now,
+                )
+            )
+            await db.execute(stmt)
+            await db.commit()
 
             logger.info(f"Uploaded audio for hype record {record_id}")
             return audio_url
@@ -206,14 +224,24 @@ class HypeStorageService:
         except Exception as e:
             logger.error(f"Failed to upload audio: {e}")
             # Update status to error
-            self.supabase.table("hype_records").update({
-                "status": "error",
-                "updated_at": now,
-            }).eq("id", record_id).execute()
+            try:
+                stmt = (
+                    update(HypeRecordModel)
+                    .where(HypeRecordModel.id == record_id)
+                    .values(
+                        status="error",
+                        updated_at=now,
+                    )
+                )
+                await db.execute(stmt)
+                await db.commit()
+            except Exception:
+                await db.rollback()
             raise HypeStorageError(f"Failed to upload audio: {e}")
 
     async def update_audio_url(
         self,
+        db: AsyncSession,
         record_id: str,
         audio_url: str,
     ) -> HypeRecord:
@@ -221,56 +249,60 @@ class HypeStorageService:
         Update a hype record with an audio URL (for cases where audio is stored externally).
 
         Args:
+            db: Database session
             record_id: The hype record ID
             audio_url: URL to the audio file
 
         Returns:
             The updated HypeRecord
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         try:
-            response = (
-                self.supabase.table("hype_records")
-                .update({
-                    "audio_url": audio_url,
-                    "status": "audio_ready",
-                    "updated_at": now,
-                })
-                .eq("id", record_id)
-                .execute()
+            stmt = (
+                update(HypeRecordModel)
+                .where(HypeRecordModel.id == record_id)
+                .values(
+                    audio_url=audio_url,
+                    status="audio_ready",
+                    updated_at=now,
+                )
+                .returning(HypeRecordModel)
             )
-            row = response.data[0]
+            result = await db.execute(stmt)
+            await db.commit()
+            record = result.scalar_one()
             logger.info(f"Updated hype record {record_id} with audio URL")
-            return self._row_to_record(row)
+            return self._model_to_record(record)
         except Exception as e:
+            await db.rollback()
             logger.error(f"Failed to update hype record with audio: {e}")
             raise HypeStorageError(f"Failed to update hype record: {e}")
 
-    async def get_hype_record(self, record_id: str) -> Optional[HypeRecord]:
+    async def get_hype_record(
+        self, db: AsyncSession, record_id: str
+    ) -> Optional[HypeRecord]:
         """
         Get a specific hype record by ID.
 
         Args:
+            db: Database session
             record_id: The hype record ID
 
         Returns:
             The HypeRecord or None if not found
         """
         try:
-            response = (
-                self.supabase.table("hype_records")
-                .select("*")
-                .eq("id", record_id)
-                .single()
-                .execute()
-            )
-            return self._row_to_record(response.data) if response.data else None
+            stmt = select(HypeRecordModel).where(HypeRecordModel.id == record_id)
+            result = await db.execute(stmt)
+            record = result.scalar_one_or_none()
+            return self._model_to_record(record) if record else None
         except Exception:
             return None
 
     async def get_hype_history(
         self,
+        db: AsyncSession,
         user_id: str,
         google_event_id: Optional[str] = None,
         limit: int = 20,
@@ -279,6 +311,7 @@ class HypeStorageService:
         Get hype history for a user.
 
         Args:
+            db: Database session
             user_id: The user's ID
             google_event_id: Optional filter by Google event ID
             limit: Maximum number of records to return
@@ -286,23 +319,25 @@ class HypeStorageService:
         Returns:
             List of HypeRecords, newest first
         """
-        query = (
-            self.supabase.table("hype_records")
-            .select("*")
-            .eq("user_id", user_id)
-            .order("created_at", desc=True)
+        conditions = [HypeRecordModel.user_id == user_id]
+        if google_event_id:
+            conditions.append(HypeRecordModel.google_event_id == google_event_id)
+
+        stmt = (
+            select(HypeRecordModel)
+            .where(and_(*conditions))
+            .order_by(HypeRecordModel.created_at.desc())
             .limit(limit)
         )
 
-        if google_event_id:
-            query = query.eq("google_event_id", google_event_id)
+        result = await db.execute(stmt)
+        records = result.scalars().all()
 
-        response = query.execute()
-
-        return [self._row_to_record(row) for row in response.data or []]
+        return [self._model_to_record(r) for r in records]
 
     async def get_latest_hype_for_event(
         self,
+        db: AsyncSession,
         user_id: str,
         google_event_id: str,
     ) -> Optional[HypeRecord]:
@@ -310,6 +345,7 @@ class HypeStorageService:
         Get the most recent hype record for a specific event.
 
         Args:
+            db: Database session
             user_id: The user's ID
             google_event_id: Google Calendar event ID
 
@@ -317,32 +353,26 @@ class HypeStorageService:
             The most recent HypeRecord or None
         """
         records = await self.get_hype_history(
-            user_id, google_event_id=google_event_id, limit=1
+            db, user_id, google_event_id=google_event_id, limit=1
         )
         return records[0] if records else None
 
-    def _row_to_record(self, row: dict) -> HypeRecord:
-        """Convert a database row to a HypeRecord."""
+    def _model_to_record(self, model: HypeRecordModel) -> HypeRecord:
+        """Convert a SQLAlchemy model to a HypeRecord dataclass."""
         return HypeRecord(
-            id=row["id"],
-            user_id=row["user_id"],
-            calendar_event_id=row.get("calendar_event_id"),
-            google_event_id=row.get("google_event_id"),
-            event_title=row["event_title"],
-            event_time=datetime.fromisoformat(
-                row["event_time"].replace("Z", "+00:00")
-            ),
-            manager_style=row["manager_style"],
-            hype_text=row.get("hype_text"),
-            audio_text=row.get("audio_text"),
-            audio_url=row.get("audio_url"),
-            status=row["status"],
-            created_at=datetime.fromisoformat(
-                row["created_at"].replace("Z", "+00:00")
-            ),
-            updated_at=datetime.fromisoformat(
-                row["updated_at"].replace("Z", "+00:00")
-            ),
+            id=str(model.id),
+            user_id=str(model.user_id),
+            calendar_event_id=str(model.calendar_event_id) if model.calendar_event_id else None,
+            google_event_id=model.google_event_id,
+            event_title=model.event_title,
+            event_time=model.event_time,
+            manager_style=model.manager_style,
+            hype_text=model.hype_text,
+            audio_text=model.audio_text,
+            audio_url=model.audio_url,
+            status=model.status,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
         )
 
 

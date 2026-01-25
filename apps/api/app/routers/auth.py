@@ -2,8 +2,10 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
+from app.services.database import get_db
 from app.services.google_token_service import (
     GoogleTokenError,
     GoogleTokenService,
@@ -56,6 +58,7 @@ async def get_user_id_from_token(
 async def store_google_token(
     request: StoreTokenRequest,
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     token_service: GoogleTokenService = Depends(get_google_token_service),
 ):
     """Store the user's Google refresh token securely (encrypted)."""
@@ -71,7 +74,7 @@ async def store_google_token(
         )
 
     try:
-        await token_service.store_refresh_token(user_id, request.refresh_token)
+        await token_service.store_refresh_token(db, user_id, request.refresh_token)
         logger.info(f"Token stored for user {user_id[:8]}...")
         return StoreTokenResponse(success=True, message="Token stored successfully")
     except GoogleTokenError as e:
@@ -82,21 +85,23 @@ async def store_google_token(
 @router.get("/google-token-status", response_model=TokenStatusResponse)
 async def get_google_token_status(
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     token_service: GoogleTokenService = Depends(get_google_token_service),
 ):
     """Check if the user has a stored Google refresh token."""
-    has_token = await token_service.has_refresh_token(user_id)
+    has_token = await token_service.has_refresh_token(db, user_id)
     return TokenStatusResponse(has_google_token=has_token)
 
 
 @router.delete("/google-token")
 async def revoke_google_token(
     user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
     token_service: GoogleTokenService = Depends(get_google_token_service),
 ):
     """Revoke/delete the user's stored Google tokens."""
     try:
-        await token_service.revoke_tokens(user_id)
+        await token_service.revoke_tokens(db, user_id)
         return {"success": True}
     except GoogleTokenError as e:
         logger.error(f"Failed to revoke token for user {user_id[:8]}...: {e}")
