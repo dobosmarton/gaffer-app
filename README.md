@@ -5,54 +5,68 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          FRONTEND (apps/web)                         │
-│                      Vite + React 19 + TanStack                      │
-│                                                                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │  Dashboard  │  │   Events    │  │  Manager    │  │    Hype     │ │
-│  │    Page     │  │    List     │  │  Selector   │  │   Player    │ │
-│  └──────┬──────┘  └──────┬──────┘  └─────────────┘  └──────┬──────┘ │
-│         │                │                                  │        │
-└─────────┼────────────────┼──────────────────────────────────┼────────┘
-          │                │                                  │
-          │  Supabase JWT  │  GET /calendar/events            │
-          │  (no Google    │  POST /hype/generate             │  POST /hype/audio
-          │   tokens!)     │                                  │
-          ▼                ▼                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                          BACKEND (apps/api)                          │
-│                             FastAPI                                  │
-│                                                                      │
-│  ┌───────────────┐  ┌───────────────────┐  ┌───────────────────┐    │
-│  │ /calendar/    │  │   /hype/generate  │  │    /hype/audio    │    │
-│  │   events      │  │   Claude AI Text  │  │  ElevenLabs TTS   │    │
-│  │               │  │     Generation    │  │    Streaming      │    │
-│  └───────┬───────┘  └─────────┬─────────┘  └─────────┬─────────┘    │
-│          │                    │                      │               │
-│          ▼                    │                      │               │
-│  ┌───────────────┐            │                      │               │
-│  │ Google Token  │            │                      │               │
-│  │   Service     │◄───────────┼──────────────────────┘               │
-│  │ (encrypted)   │            │                                      │
-│  └───────┬───────┘            │                                      │
-│          │                    │                                      │
-└──────────┼────────────────────┼──────────────────────────────────────┘
-           │                    │
-           ▼                    ▼
-    ┌─────────────┐      ┌─────────────┐       ┌─────────────┐
-    │   Google    │      │  Anthropic  │       │  ElevenLabs │
-    │  Calendar   │      │  Claude API │       │     API     │
-    │     API     │      └─────────────┘       └─────────────┘
-    └─────────────┘
-           ▲
-           │
-    ┌─────────────┐
-    │  PostgreSQL │
-    │  (Supabase) │
-    │  encrypted  │
-    │   tokens    │
-    └─────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           FRONTEND (apps/web)                            │
+│                       Vite + React 19 + TanStack                         │
+│                                                                          │
+│         ┌────────────┐       ┌────────────┐       ┌────────────┐         │
+│         │  Events    │       │   Hype     │       │   Audio    │         │
+│         │   List     │──────▶│ Generation │──────▶│   Player   │         │
+│         └─────┬──────┘       └─────┬──────┘       └────────────┘         │
+│               │                    │                                     │
+└───────────────┼────────────────────┼─────────────────────────────────────┘
+                │                    │
+                │  All requests include Supabase JWT
+                ▼                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           BACKEND (apps/api)                             │
+│                              FastAPI                                     │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐     │
+│  │                      Auth Middleware                            │     │
+│  │              Verify JWT via Supabase Auth API ─────────────────────┐  │
+│  └─────────────────────────────────────────────────────────────────┘  │  │
+│                                                                       │  │
+│  ┌───────────────┐   ┌───────────────┐   ┌───────────────┐            │  │
+│  │  /calendar/*  │   │ /hype/generate│   │  /hype/audio  │            │  │
+│  │               │   │               │   │               │            │  │
+│  │ • Sync events │   │ • Claude AI   │   │ • ElevenLabs  │            │  │
+│  │ • Cache in DB │   │ • Store in DB │   │ • Store audio │            │  │
+│  └───────┬───────┘   └───────┬───────┘   └───┬───────┬───┘            │  │
+│          │                   │               │       │                │  │
+│          │    ┌──────────────┘               │       │                │  │
+│          │    │    ┌─────────────────────────┘       │                │  │
+│          ▼    ▼    ▼                                 │                │  │
+│  ┌──────────────────────┐                            │                │  │
+│  │    SQLAlchemy ORM    │                            │                │  │
+│  └──────────┬───────────┘                            │                │  │
+│             │                                        │                │  │
+└─────────────┼────────────────────────────────────────┼────────────────┼──┘
+              │                                        │                │
+              ▼                                        ▼                ▼
+    ┌─────────────────┐                    ┌─────────────────┐  ┌─────────────┐
+    │   PostgreSQL    │                    │Supabase Storage │  │Supabase Auth│
+    │   (Supabase)    │                    │                 │  │             │
+    │                 │                    │  • Audio files  │  │ • JWT verify│
+    │  • tokens (enc) │                    └─────────────────┘  └─────────────┘
+    │  • events cache │
+    │  • sync state   │
+    │  • hype records │
+    └────────┬────────┘
+             │
+             │ encrypted Google refresh tokens
+             ▼
+    ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+    │  Google         │      │   Anthropic     │      │   ElevenLabs    │
+    │  Calendar API   │      │   Claude API    │      │   TTS API       │
+    │                 │      │                 │      │                 │
+    │  • Fetch events │      │  • Generate     │      │  • Text to      │
+    │                 │      │    hype text    │      │    speech       │
+    └─────────────────┘      └─────────────────┘      └─────────────────┘
+             ▲                       ▲                        ▲
+             │                       │                        │
+             └───── OAuth tokens ────┴──── API keys ──────────┘
+                    from DB                from env
 ```
 
 **Key Security Features (BFF Pattern):**
@@ -75,13 +89,16 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 - **Framework**: FastAPI
 - **AI Text Generation**: Anthropic Claude (claude-sonnet-4-20250514)
 - **Text-to-Speech**: ElevenLabs SDK (streaming)
-- **Auth Validation**: Supabase (JWT verification)
-- **ORM**: SQLAlchemy 2.0 (async)
+- **Database**: SQLAlchemy 2.0 (async) with asyncpg
+- **Auth Validation**: Supabase Auth (JWT verification)
+- **File Storage**: Supabase Storage (audio files)
 - **Migrations**: Alembic
 - **Token Encryption**: Cryptography (Fernet)
 
 ### Infrastructure
-- **Auth & Database**: Supabase (PostgreSQL)
+- **Database**: Supabase (PostgreSQL with PgBouncer)
+- **Auth**: Supabase Auth
+- **Storage**: Supabase Storage
 - **Package Manager**: pnpm (monorepo)
 
 ## Project Structure
@@ -100,19 +117,14 @@ gaffer/
 │   │   │   │       └── dashboard.tsx # Main app
 │   │   │   ├── components/
 │   │   │   │   ├── ui/               # Reusable UI components
-│   │   │   │   │   ├── audio-player.tsx
-│   │   │   │   │   ├── bar-visualizer.tsx
-│   │   │   │   │   └── shimmering-text.tsx
 │   │   │   │   ├── event-card.tsx
 │   │   │   │   ├── hype-player.tsx
 │   │   │   │   └── manager-selector.tsx
 │   │   │   ├── hooks/
-│   │   │   │   └── use-calendar-events.ts
 │   │   │   └── lib/
 │   │   │       ├── supabase.ts
 │   │   │       └── supabase-provider.tsx
-│   │   ├── package.json
-│   │   └── vite.config.ts
+│   │   └── package.json
 │   │
 │   └── api/                          # Backend
 │       ├── app/
@@ -121,115 +133,36 @@ gaffer/
 │       │   ├── routers/
 │       │   │   ├── hype.py           # /hype endpoints
 │       │   │   ├── calendar.py       # /calendar endpoints
-│       │   │   └── auth.py           # /auth endpoints (token storage)
+│       │   │   └── auth.py           # /auth endpoints
 │       │   ├── services/
-│       │   │   ├── hype_generator.py # Claude integration
-│       │   │   ├── google_token_service.py  # Token encryption & refresh
-│       │   │   ├── database.py       # SQLAlchemy async engine
-│       │   │   └── supabase_client.py
+│       │   │   ├── hype_generator.py       # Claude integration
+│       │   │   ├── hype_storage_service.py # Hype persistence + audio storage
+│       │   │   ├── calendar_sync_service.py # Calendar sync & caching
+│       │   │   ├── google_token_service.py # Token encryption & refresh
+│       │   │   ├── database.py             # SQLAlchemy async engine
+│       │   │   └── supabase_client.py      # Supabase Auth & Storage
 │       │   ├── models/               # SQLAlchemy models
 │       │   │   ├── base.py
-│       │   │   └── user_google_token.py
+│       │   │   ├── user_google_token.py
+│       │   │   ├── calendar_event.py
+│       │   │   ├── calendar_sync_state.py
+│       │   │   └── hype_record.py
 │       │   └── prompts/
 │       │       └── manager_styles.py # Manager personalities
 │       ├── migrations/               # Alembic migrations
 │       │   ├── env.py
 │       │   └── versions/
 │       ├── alembic.ini
-│       ├── requirements.txt
-│       └── .env
+│       └── requirements.txt
 │
 ├── package.json                      # Workspace root
 ├── pnpm-workspace.yaml
 └── README.md
 ```
 
-## API Endpoints
+## API Documentation
 
-### Backend (`http://localhost:8000`)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/auth/store-google-token` | POST | Store encrypted Google refresh token |
-| `/auth/google-token-status` | GET | Check if user has stored token |
-| `/auth/google-token` | DELETE | Revoke stored tokens |
-| `/calendar/events` | GET | Fetch calendar events (uses stored tokens) |
-| `/hype/generate` | POST | Generate motivational text using Claude |
-| `/hype/audio` | POST | Stream TTS audio from ElevenLabs |
-
-#### POST `/auth/store-google-token`
-```
-Headers:
-  Authorization: Bearer <supabase_jwt>
-
-Body:
-{
-  "refresh_token": "<google_refresh_token>"
-}
-
-Response:
-{
-  "success": true,
-  "message": "Token stored successfully"
-}
-```
-
-#### GET `/calendar/events`
-```
-Headers:
-  Authorization: Bearer <supabase_jwt>
-
-Query Parameters:
-  time_min: ISO datetime (optional, defaults to now)
-  time_max: ISO datetime (optional, defaults to +24h)
-  max_results: number (optional, defaults to 10)
-
-Response:
-{
-  "events": [
-    {
-      "id": "event_id",
-      "title": "Q3 Budget Review",
-      "description": "Monthly budget review",
-      "start": "2024-01-15T14:00:00Z",
-      "end": "2024-01-15T15:00:00Z",
-      "location": "Conference Room A",
-      "attendees": 5
-    }
-  ]
-}
-```
-
-#### POST `/hype/generate`
-```json
-// Request
-{
-  "event_title": "Q3 Budget Review",
-  "event_description": "Monthly budget review with finance team",
-  "event_time": "2024-01-15T14:00:00Z",
-  "manager_style": "ferguson"  // ferguson | mourinho | klopp | guardiola | bielsa
-}
-
-// Response
-{
-  "hype_id": "uuid",
-  "hype_text": "RIGHT, LISTEN UP...",
-  "manager": "ferguson",
-  "status": "text_ready"
-}
-```
-
-#### POST `/hype/audio`
-```json
-// Request
-{
-  "text": "RIGHT, LISTEN UP...",
-  "voice_id": "optional_voice_id"
-}
-
-// Response: audio/mpeg stream
-```
+Interactive API docs available at: **http://localhost:8000/docs**
 
 ## Setup
 
@@ -270,7 +203,8 @@ APP_ENV=development
 FRONTEND_URL=http://localhost:3000
 
 # Database (get from Supabase Dashboard → Settings → Database → Connection string)
-DATABASE_URL=postgresql+asyncpg://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres
+# Use the "Transaction" pooler connection string for PgBouncer compatibility
+DATABASE_URL=postgresql+asyncpg://postgres.[PROJECT]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
@@ -314,7 +248,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 ```bash
 cd apps/api
-pnpm run db:migrate
+alembic upgrade head
 ```
 
 ### 6. Run the Apps
@@ -339,16 +273,16 @@ pnpm run dev
 cd apps/api
 
 # Apply pending migrations
-pnpm run db:migrate
+alembic upgrade head
 
 # Rollback last migration
-pnpm run db:rollback
+alembic downgrade -1
 
 # Auto-generate migration from model changes
-pnpm run db:generate "description"
+alembic revision --autogenerate -m "description"
 
 # Show current migration version
-pnpm run db:status
+alembic current
 ```
 
 ## Manager Personalities
@@ -382,8 +316,10 @@ pnpm run db:status
 - **Tokens encrypted at rest**: Google refresh tokens stored with Fernet encryption
 - **BFF pattern**: Frontend never handles Google tokens after initial OAuth
 - **Short-lived access tokens**: Cached for 50 minutes, auto-refreshed
-- **RLS enabled**: Database row-level security on token table
-- **Service role key**: Backend uses Supabase service role for DB access
+- **RLS enabled**: Database row-level security on all tables
+- **SQLAlchemy direct access**: Backend uses SQLAlchemy with service-level DB access
+- **Supabase Auth**: JWT verification for all API endpoints
+- **Supabase Storage**: Audio files stored securely with user-scoped paths
 
 ## License
 
