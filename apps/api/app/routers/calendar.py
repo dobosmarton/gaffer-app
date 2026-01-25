@@ -7,6 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.routers.auth import get_user_id_from_token
+from app.services.calendar_sync_service import (
+    CalendarSyncError,
+    CalendarSyncService,
+    get_calendar_sync_service,
+)
 from app.services.google_token_service import (
     GoogleTokenService,
     NoRefreshTokenError,
@@ -19,6 +24,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+class LatestHype(BaseModel):
+    """Latest hype data for a calendar event."""
+    hype_text: Optional[str] = None
+    audio_url: Optional[str] = None
+    manager_style: str = "ferguson"
+
+
 class CalendarEvent(BaseModel):
     id: str
     title: str
@@ -27,11 +39,14 @@ class CalendarEvent(BaseModel):
     end: datetime
     location: Optional[str] = None
     attendees: Optional[int] = None
+    latest_hype: Optional[LatestHype] = None
 
 
 class CalendarEventsResponse(BaseModel):
     events: list[CalendarEvent]
     needs_google_auth: bool = False
+    from_cache: bool = False
+    last_sync: Optional[datetime] = None
 
 
 class CalendarErrorResponse(BaseModel):
@@ -39,24 +54,135 @@ class CalendarErrorResponse(BaseModel):
     needs_google_auth: bool = False
 
 
+class SyncResponse(BaseModel):
+    success: bool
+    events_added: int
+    events_updated: int
+    events_deleted: int
+    is_full_sync: bool
+
+
+@router.post("/sync", response_model=SyncResponse)
+async def sync_calendar(
+    force_full: bool = False,
+    user_id: str = Depends(get_user_id_from_token),
+    sync_service: CalendarSyncService = Depends(get_calendar_sync_service),
+):
+    """Sync calendar events from Google Calendar.
+
+    This endpoint triggers a sync operation that fetches events from Google
+    and stores them in the database. Uses incremental sync when possible.
+
+    Args:
+        force_full: Force a full sync instead of incremental
+    """
+    try:
+        result = await sync_service.sync_calendar(user_id, force_full=force_full)
+        return SyncResponse(
+            success=True,
+            events_added=result.events_added,
+            events_updated=result.events_updated,
+            events_deleted=result.events_deleted,
+            is_full_sync=result.is_full_sync,
+        )
+    except NoRefreshTokenError:
+        logger.info(f"User {user_id[:8]}... needs to authenticate with Google")
+        raise HTTPException(
+            status_code=401,
+            detail={"message": "Google authentication required", "needs_google_auth": True},
+        )
+    except TokenRefreshError as e:
+        logger.error(f"Token refresh failed for user {user_id[:8]}...: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={"message": "Google authentication expired", "needs_google_auth": True},
+        )
+    except CalendarSyncError as e:
+        logger.error(f"Calendar sync error for user {user_id[:8]}...: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to sync calendar events",
+        )
+
+
 @router.get("/events", response_model=CalendarEventsResponse)
 async def get_calendar_events(
     time_min: Optional[datetime] = None,
     time_max: Optional[datetime] = None,
     max_results: int = 10,
+    use_cache: bool = True,
     user_id: str = Depends(get_user_id_from_token),
     token_service: GoogleTokenService = Depends(get_google_token_service),
+    sync_service: CalendarSyncService = Depends(get_calendar_sync_service),
 ):
-    """Fetch calendar events from Google Calendar.
+    """Fetch calendar events.
+
+    By default, returns cached events from the database. Set use_cache=false
+    to fetch directly from Google Calendar API.
 
     Requires Supabase JWT authentication via Authorization header.
-    The backend retrieves and manages Google tokens securely.
     """
     # Default to next 24 hours
     if time_min is None:
         time_min = datetime.now(timezone.utc)
     if time_max is None:
         time_max = time_min + timedelta(hours=24)
+
+    # If using cache, return cached events
+    if use_cache:
+        try:
+            cached_events = await sync_service.get_cached_events(
+                user_id, time_min, time_max, max_results
+            )
+
+            # Get last sync time
+            sync_state = await sync_service.get_sync_state(user_id)
+            last_sync = None
+            if sync_state and sync_state.get("last_sync"):
+                last_sync = datetime.fromisoformat(
+                    sync_state["last_sync"].replace("Z", "+00:00")
+                )
+
+            # Auto-sync if cache is empty and never synced before
+            if not cached_events and not last_sync:
+                logger.info(f"Empty cache and no sync history for user {user_id[:8]}..., triggering auto-sync")
+                await sync_service.sync_calendar(user_id, force_full=True)
+                # Re-fetch from cache after sync
+                cached_events = await sync_service.get_cached_events(
+                    user_id, time_min, time_max, max_results
+                )
+                sync_state = await sync_service.get_sync_state(user_id)
+                if sync_state and sync_state.get("last_sync"):
+                    last_sync = datetime.fromisoformat(
+                        sync_state["last_sync"].replace("Z", "+00:00")
+                    )
+
+            events = [
+                CalendarEvent(
+                    id=e.google_event_id,
+                    title=e.title,
+                    description=e.description,
+                    start=e.start_time,
+                    end=e.end_time,
+                    location=e.location,
+                    attendees=e.attendees_count,
+                    latest_hype=LatestHype(
+                        hype_text=e.latest_hype.hype_text,
+                        audio_url=e.latest_hype.audio_url,
+                        manager_style=e.latest_hype.manager_style,
+                    ) if e.latest_hype else None,
+                )
+                for e in cached_events
+            ]
+
+            return CalendarEventsResponse(
+                events=events,
+                from_cache=True,
+                last_sync=last_sync,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to get cached events, falling back to Google: {e}")
+            # Fall through to fetch from Google
 
     # Get access token from secure storage (handles refresh automatically)
     try:
@@ -159,4 +285,4 @@ async def get_calendar_events(
             logger.warning(f"Failed to parse event {item.get('id', 'unknown')}: {e}")
             continue
 
-    return CalendarEventsResponse(events=events)
+    return CalendarEventsResponse(events=events, from_cache=False)

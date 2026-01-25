@@ -1,7 +1,8 @@
+import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { EventsList } from "@/components/events-list";
 import { GoogleReconnectBanner } from "@/components/google-reconnect-banner";
-import { useCalendarEvents } from "@/hooks/use-calendar-events";
+import { useCalendarEvents, useCalendarSync } from "@/hooks/use-calendar-events";
 import { useHypeGeneration } from "@/hooks/use-hype-generation";
 import { useSupabase } from "@/lib/supabase-provider";
 
@@ -12,15 +13,25 @@ export const Route = createFileRoute("/(protected)/dashboard")({
 function Dashboard() {
   const { needsGoogleAuth, reconnectGoogle } = useSupabase();
 
-  const {
-    data: events,
-    isLoading,
-    error,
-    refetch,
-    isRefetching,
-  } = useCalendarEvents({ maxResults: 10 });
+  const { data: events, isLoading, error, isRefetching } = useCalendarEvents({ maxResults: 10 });
 
-  const { generateHype, getEventHypeState } = useHypeGeneration();
+  // Pass events to load existing hype records
+  const { generateHype, getEventHypeState } = useHypeGeneration(events);
+
+  const syncMutation = useCalendarSync();
+
+  // Sync calendar on mount (if not recently synced)
+  useEffect(() => {
+    if (!needsGoogleAuth && !syncMutation.isPending) {
+      syncMutation.mutate({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsGoogleAuth]);
+
+  const handleRefetch = async () => {
+    // Trigger sync first, then refetch (sync already invalidates the query)
+    await syncMutation.mutateAsync({});
+  };
 
   return (
     <div className="space-y-6">
@@ -37,8 +48,8 @@ function Dashboard() {
         error={error}
         getEventHypeState={getEventHypeState}
         onGenerateHype={generateHype}
-        onRefetch={refetch}
-        isRefetching={isRefetching}
+        onRefetch={handleRefetch}
+        isRefetching={isRefetching || syncMutation.isPending}
       />
     </div>
   );

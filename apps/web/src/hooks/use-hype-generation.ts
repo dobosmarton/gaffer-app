@@ -1,6 +1,7 @@
 import type { CalendarEvent, EventHypeState } from "@/components/event-card";
+import { useSupabase } from "@/lib/supabase-provider";
 import { useMutation } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type HypeStatesMap = Record<string, EventHypeState>;
 
@@ -18,25 +19,44 @@ const DEFAULT_HYPE_STATE: EventHypeState = {
   manager: "ferguson",
 };
 
-export const useHypeGeneration = () => {
+export const useHypeGeneration = (events?: CalendarEvent[]) => {
+  const { session } = useSupabase();
   const [hypeStates, setHypeStates] = useState<HypeStatesMap>({});
-  const hypeStatesRef = useRef(hypeStates);
 
-  // Keep ref in sync with state
-  useEffect(() => {
-    hypeStatesRef.current = hypeStates;
-  }, [hypeStates]);
+  const mergedHypeStates = useMemo(() => {
+    
+    if (!events || events.length === 0) return hypeStates;
 
-  // Clean up blob URLs when component unmounts
+        const updates = events.reduce<HypeStatesMap>((acc, event) => {
+          const existingState = hypeStates[event.id];
+          // Only initialize if we don't already have state and event has hype data
+          if ((!existingState || existingState.status === "idle") && event.latestHype) {
+            acc[event.id] = {
+              status: "ready",
+              hypeText: event.latestHype.hypeText,
+              audioUrl: event.latestHype.audioUrl,
+              manager: event.latestHype.managerStyle,
+            };
+          }
+          return acc;
+        }, {});
+
+        if (Object.keys(updates).length === 0) return hypeStates;
+        return { ...hypeStates, ...updates };
+
+  }, [events, hypeStates]);
+
+
+  // Clean up blob URLs when component unmounts or state changes
   useEffect(() => {
     return () => {
-      Object.values(hypeStatesRef.current).forEach((state) => {
+      Object.values(hypeStates).forEach((state) => {
         if (state.audioUrl) {
           URL.revokeObjectURL(state.audioUrl);
         }
       });
     };
-  }, []);
+  }, [hypeStates]);
 
   const updateEventState = useCallback((eventId: string, updates: Partial<EventHypeState>) => {
     setHypeStates((prev) => ({
@@ -50,15 +70,24 @@ export const useHypeGeneration = () => {
 
   const mutation = useMutation({
     mutationFn: async ({ event, manager }: GenerateHypeParams) => {
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
+      }
+
       // Step 1: Generate hype text
       const textResponse = await fetch(`${API_URL}/hype/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           event_title: event.title,
           event_description: event.description || null,
           event_time: event.start.toISOString(),
           manager_style: manager,
+          google_event_id: event.id,
+          persist: true,
         }),
       });
 
@@ -78,10 +107,14 @@ export const useHypeGeneration = () => {
       // Step 2: Generate audio (use audio_text which has emotion tags for TTS)
       const audioResponse = await fetch(`${API_URL}/hype/audio`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           text: textData.audio_text,
-          manager: manager, // Pass manager to select custom voice
+          manager: manager,
+          hype_id: textData.hype_id, // Link audio to hype record
         }),
       });
 
@@ -90,10 +123,19 @@ export const useHypeGeneration = () => {
         throw new Error(error.detail || "Failed to generate audio");
       }
 
+      // Check if audio was persisted (URL in header)
+      const persistedAudioUrl = audioResponse.headers.get("X-Audio-Url");
+
       const audioBlob = await audioResponse.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      return { eventId: event.id, hypeText: textData.hype_text, audioUrl };
+      return {
+        eventId: event.id,
+        hypeText: textData.hype_text,
+        audioUrl,
+        persistedAudioUrl,
+        hypeId: textData.hype_id,
+      };
     },
     onSuccess: ({ eventId, audioUrl }) => {
       updateEventState(eventId, {
@@ -112,7 +154,7 @@ export const useHypeGeneration = () => {
   const generateHype = useCallback(
     (event: CalendarEvent, manager: string) => {
       // Clean up previous audio URL if exists
-      const prevState = hypeStates[event.id];
+      const prevState = mergedHypeStates[event.id];
       if (prevState?.audioUrl) {
         URL.revokeObjectURL(prevState.audioUrl);
       }
@@ -126,18 +168,18 @@ export const useHypeGeneration = () => {
 
       mutation.mutate({ event, manager });
     },
-    [hypeStates, updateEventState, mutation]
+    [mergedHypeStates, updateEventState, mutation]
   );
 
   const getEventHypeState = useCallback(
     (eventId: string): EventHypeState => {
-      return hypeStates[eventId] ?? DEFAULT_HYPE_STATE;
+      return mergedHypeStates[eventId] ?? DEFAULT_HYPE_STATE;
     },
-    [hypeStates]
+    [mergedHypeStates]
   );
 
   return {
-    hypeStates,
+    hypeStates: mergedHypeStates,
     generateHype,
     getEventHypeState,
     isPending: mutation.isPending,

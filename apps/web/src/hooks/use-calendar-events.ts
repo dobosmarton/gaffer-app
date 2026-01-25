@@ -1,8 +1,14 @@
 import type { CalendarEvent } from "@/components/event-card";
 import { useSupabase } from "@/lib/supabase-provider";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+type LatestHype = {
+  hype_text: string | null;
+  audio_url: string | null;
+  manager_style: string;
+};
 
 type BackendCalendarEvent = {
   id: string;
@@ -12,15 +18,26 @@ type BackendCalendarEvent = {
   end: string;
   location: string | null;
   attendees: number | null;
+  latest_hype: LatestHype | null;
 };
 
 type BackendCalendarResponse = {
   events: BackendCalendarEvent[];
   needs_google_auth?: boolean;
+  from_cache?: boolean;
+  last_sync?: string | null;
 };
 
 type BackendErrorResponse = {
   detail: string | { message: string; needs_google_auth?: boolean };
+};
+
+type SyncResponse = {
+  success: boolean;
+  events_added: number;
+  events_updated: number;
+  events_deleted: number;
+  is_full_sync: boolean;
 };
 
 export class NeedsGoogleAuthError extends Error {
@@ -30,11 +47,55 @@ export class NeedsGoogleAuthError extends Error {
   }
 }
 
-export function useCalendarEvents(options?: {
+export const useCalendarSync = () => {
+  const { session } = useSupabase();
+  const queryClient = useQueryClient();
+
+  return useMutation<SyncResponse, Error, { forceFull?: boolean }>({
+    mutationFn: async ({ forceFull = false }) => {
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
+      }
+
+      const params = new URLSearchParams();
+      if (forceFull) {
+        params.set("force_full", "true");
+      }
+
+      const response = await fetch(`${API_URL}/calendar/sync?${params}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error: BackendErrorResponse = await response.json().catch(() => ({
+          detail: "Unknown error",
+        }));
+        const detail = error.detail;
+        if (typeof detail === "object" && detail.needs_google_auth) {
+          throw new NeedsGoogleAuthError(detail.message);
+        }
+        const message = typeof detail === "string" ? detail : detail.message || "Unknown error";
+        throw new Error(message);
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate calendar events query to refetch
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+    },
+  });
+};
+
+export const useCalendarEvents = (options?: {
   timeMin?: Date;
   timeMax?: Date;
   maxResults?: number;
-}) {
+  useCache?: boolean;
+}) => {
   const { session, needsGoogleAuth } = useSupabase();
 
   return useQuery<CalendarEvent[], Error>({
@@ -53,10 +114,13 @@ export function useCalendarEvents(options?: {
       const timeMax = options?.timeMax ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
       const maxResults = options?.maxResults ?? 10;
 
+      const useCache = options?.useCache ?? true;
+
       const params = new URLSearchParams({
         time_min: timeMin.toISOString(),
         time_max: timeMax.toISOString(),
         max_results: maxResults.toString(),
+        use_cache: useCache.toString(),
       });
 
       const response = await fetch(`${API_URL}/calendar/events?${params}`, {
@@ -91,6 +155,13 @@ export function useCalendarEvents(options?: {
         end: new Date(event.end),
         location: event.location ?? undefined,
         attendees: event.attendees ?? undefined,
+        latestHype: event.latest_hype
+          ? {
+              hypeText: event.latest_hype.hype_text,
+              audioUrl: event.latest_hype.audio_url,
+              managerStyle: event.latest_hype.manager_style,
+            }
+          : undefined,
       }));
     },
     // Only enable if we have a session AND we don't need Google auth
@@ -105,4 +176,4 @@ export function useCalendarEvents(options?: {
       return failureCount < 3;
     },
   });
-}
+};

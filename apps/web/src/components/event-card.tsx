@@ -1,15 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Clock, MapPin, Users, ChevronDown, Loader2, RefreshCw } from "lucide-react";
+import { Clock, MapPin, Users, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AudioPlayerProvider,
   AudioPlayerButton,
@@ -19,7 +13,14 @@ import {
   AudioPlayerSpeed,
 } from "@/components/ui/audio-player";
 import { cn } from "@/lib/utils";
-import { MANAGERS, getManagerName } from "@/components/manager-selector";
+import { getManagerName } from "@/components/manager-selector";
+import { ManagerDropdown } from "@/components/manager-dropdown";
+
+export type LatestHype = {
+  hypeText: string | null;
+  audioUrl: string | null;
+  managerStyle: string;
+};
 
 export type CalendarEvent = {
   id: string;
@@ -29,6 +30,7 @@ export type CalendarEvent = {
   end: Date;
   location?: string;
   attendees?: number;
+  latestHype?: LatestHype;
 };
 
 export type EventHypeState = {
@@ -46,13 +48,15 @@ type EventCardProps = {
 };
 
 export const EventCard = ({ event, hypeState, onGenerateHype, className }: EventCardProps) => {
-  const [selectedManager, setSelectedManager] = useState("ferguson");
+  // Use manager from hype state if available, otherwise default to ferguson
+  // The hype state manager is set when data is loaded from the backend
+  const [selectedManager, setSelectedManager] = useState(hypeState.manager || "ferguson");
+
   const timeUntil = getTimeUntil(event.start);
   const isStartingSoon = timeUntil.minutes < 30 && timeUntil.hours === 0;
   const isGenerating =
     hypeState.status === "generating_text" || hypeState.status === "generating_audio";
   const hasContent = hypeState.status !== "idle";
-  const selectedManagerData = MANAGERS.find((m) => m.id === selectedManager);
 
   return (
     <Card
@@ -111,40 +115,11 @@ export const EventCard = ({ event, hypeState, onGenerateHype, className }: Event
 
             {/* Manager selector + Hype button */}
             <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isGenerating}
-                    className="h-9 gap-1.5"
-                  >
-                    <span className="text-base">{selectedManagerData?.emoji}</span>
-                    <span className="hidden sm:inline text-xs max-w-[80px] truncate">
-                      {selectedManagerData?.name.split(" ").pop()}
-                    </span>
-                    <ChevronDown className="h-3 w-3 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  {MANAGERS.map((manager) => (
-                    <DropdownMenuItem
-                      key={manager.id}
-                      onClick={() => setSelectedManager(manager.id)}
-                      className={cn(
-                        "flex items-center gap-2",
-                        selectedManager === manager.id && "bg-gray-100"
-                      )}
-                    >
-                      <span className="text-lg">{manager.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{manager.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{manager.description}</p>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <ManagerDropdown
+                selected={selectedManager}
+                onSelect={setSelectedManager}
+                disabled={isGenerating}
+              />
 
               <Button
                 onClick={() => onGenerateHype(selectedManager)}

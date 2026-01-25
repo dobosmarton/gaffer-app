@@ -100,11 +100,7 @@ function LandingPage() {
                 className="flex-shrink-0 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/30"
                 aria-label={isPlaying ? "Pause" : "Play sample"}
               >
-                {isPlaying ? (
-                  <Pause className="h-6 w-6" />
-                ) : (
-                  <Play className="h-6 w-6 ml-1" />
-                )}
+                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
               </button>
               <p className="text-lg italic text-slate-200 leading-relaxed text-left">
                 "RIGHT, LISTEN UP. This is it. The board room. 2 PM. They're gonna come at you with
