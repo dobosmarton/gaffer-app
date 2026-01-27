@@ -1,7 +1,8 @@
+import { CTASection } from "@/components/landing/cta-section";
 import { Footer } from "@/components/landing/footer";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { ManagersSection } from "@/components/landing/managers-section";
-import { PricingSection } from "@/components/landing/pricing-section";
+// import { PricingSection } from "@/components/landing/pricing-section";
 import { getCurrentUser } from "@/lib/supabase";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Megaphone, Pause, Play } from "lucide-react";
@@ -132,8 +133,11 @@ function LandingPage() {
           {/* Managers */}
           <ManagersSection />
 
-          {/* Pricing section */}
-          <PricingSection />
+          {/* CTA */}
+          <CTASection />
+
+          {/* Pricing section - commented out until we validate demand */}
+          {/* <PricingSection /> */}
 
           {/* Footer */}
           <Footer />

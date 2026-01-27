@@ -23,8 +23,8 @@ export const ManagerDropdown = ({ selected, onSelect, disabled }: ManagerDropdow
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled} className="h-9 gap-1.5">
           <span className="text-base">{selectedManager?.emoji}</span>
-          <span className="hidden sm:inline text-xs max-w-[80px] truncate">
-            {selectedManager?.name.split(" ").pop()}
+          <span className="hidden sm:inline text-xs">
+            {selectedManager?.name.replace(" Style", "")}
           </span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>

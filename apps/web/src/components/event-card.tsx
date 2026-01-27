@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Clock, MapPin, Users, Loader2, RefreshCw } from "lucide-react";
+import { Check, Clock, Loader2, MapPin, RefreshCw, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,9 @@ type EventCardProps = {
   onGenerateHype: (managerId: string) => void;
   className?: string;
   canGenerate?: boolean;
+  isInterestRegistered?: boolean;
+  isRegisteringInterest?: boolean;
+  onRegisterInterest?: () => void;
 };
 
 export const EventCard = ({
@@ -55,6 +58,9 @@ export const EventCard = ({
   onGenerateHype,
   className,
   canGenerate = true,
+  isInterestRegistered = false,
+  isRegisteringInterest = false,
+  onRegisterInterest,
 }: EventCardProps) => {
   // Use manager from hype state if available, otherwise default to ferguson
   // The hype state manager is set when data is loaded from the backend
@@ -129,29 +135,54 @@ export const EventCard = ({
                 disabled={isGenerating || !canGenerate}
               />
 
-              <Button
-                onClick={() => onGenerateHype(selectedManager)}
-                disabled={isGenerating || !canGenerate}
-                size="sm"
-                className={cn(
-                  "shadow-md",
-                  canGenerate
-                    ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                    : "bg-gray-300 cursor-not-allowed"
-                )}
-                title={!canGenerate ? "Monthly limit reached" : undefined}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="hidden sm:inline ml-1">Generating...</span>
-                  </>
-                ) : !canGenerate ? (
-                  "Limit Reached"
+              {!canGenerate && onRegisterInterest ? (
+                isInterestRegistered ? (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                    <Check className="h-3.5 w-3.5" />
+                    <span>Notified</span>
+                  </div>
                 ) : (
-                  "Hype Me"
-                )}
-              </Button>
+                  <Button
+                    onClick={onRegisterInterest}
+                    disabled={isRegisteringInterest}
+                    size="sm"
+                    className="shadow-md bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                  >
+                    {isRegisteringInterest ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        <span className="hidden sm:inline ml-1">Want more?</span>
+                      </>
+                    )}
+                  </Button>
+                )
+              ) : (
+                <Button
+                  onClick={() => onGenerateHype(selectedManager)}
+                  disabled={isGenerating || !canGenerate}
+                  size="sm"
+                  className={cn(
+                    "shadow-md",
+                    canGenerate
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                      : "bg-gray-300 cursor-not-allowed"
+                  )}
+                  title={!canGenerate ? "Monthly limit reached" : undefined}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="hidden sm:inline ml-1">Generating...</span>
+                    </>
+                  ) : !canGenerate ? (
+                    "Limit Reached"
+                  ) : (
+                    "Hype Me"
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>

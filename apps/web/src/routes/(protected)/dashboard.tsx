@@ -1,19 +1,28 @@
 import { EventsList } from "@/components/events-list";
 import { GoogleReconnectBanner } from "@/components/google-reconnect-banner";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useCalendarEvents, useCalendarSync } from "@/hooks/use-calendar-events";
 import { useHypeGeneration } from "@/hooks/use-hype-generation";
+import { useUpgradeInterest } from "@/hooks/use-upgrade-interest";
 import { useUsage, type UsageInfo } from "@/hooks/use-usage";
 import { useSupabase } from "@/lib/supabase-provider";
 import { createFileRoute } from "@tanstack/react-router";
-import { Megaphone } from "lucide-react";
+import { Check, Loader2, Megaphone, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/(protected)/dashboard")({
   component: Dashboard,
 });
 
-const UsageCard = ({ usage }: { usage: UsageInfo | undefined }) => {
+type UsageCardProps = {
+  usage: UsageInfo | undefined;
+  isRegistered: boolean;
+  isRegistering: boolean;
+  onRegisterInterest: () => void;
+};
+
+const UsageCard = ({ usage, isRegistered, isRegistering, onRegisterInterest }: UsageCardProps) => {
   if (!usage) {
     return (
       <Card className="p-5 animate-pulse">
@@ -74,9 +83,33 @@ const UsageCard = ({ usage }: { usage: UsageInfo | undefined }) => {
           </div>
 
           {isAtLimit && (
-            <p className="mt-3 text-sm text-red-600">
-              You've reached your monthly limit. Upgrade for more speeches.
-            </p>
+            <div className="mt-3">
+              {isRegistered ? (
+                <div className="flex items-center gap-2 text-sm text-amber-600">
+                  <Check className="h-4 w-4" />
+                  <span>Thanks! We'll notify you when more plans are available.</span>
+                </div>
+              ) : (
+                <Button
+                  onClick={onRegisterInterest}
+                  disabled={isRegistering}
+                  size="sm"
+                  className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                >
+                  {isRegistering ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      Registering...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      I want more speeches
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -94,6 +127,8 @@ function Dashboard() {
 
   const { usage } = useUsage();
   const canGenerate = !!usage?.can_generate;
+
+  const { isRegistered, isRegistering, registerInterest } = useUpgradeInterest();
 
   const syncMutation = useCalendarSync();
 
@@ -118,7 +153,12 @@ function Dashboard() {
           <p className="mt-1 text-gray-600">Select a meeting and get your pre-match team talk.</p>
         </div>
         <div className="w-80 flex-shrink-0">
-          <UsageCard usage={usage} />
+          <UsageCard
+            usage={usage}
+            isRegistered={isRegistered}
+            isRegistering={isRegistering}
+            onRegisterInterest={registerInterest}
+          />
         </div>
       </div>
 
@@ -133,6 +173,9 @@ function Dashboard() {
         onRefetch={handleRefetch}
         isRefetching={isRefetching || syncMutation.isPending}
         canGenerate={canGenerate}
+        isInterestRegistered={isRegistered}
+        isRegisteringInterest={isRegistering}
+        onRegisterInterest={registerInterest}
       />
     </div>
   );

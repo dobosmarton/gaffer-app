@@ -25,6 +25,10 @@ from app.services.usage_service import (
     UsageService,
     get_usage_service,
 )
+from app.services.upgrade_interest_service import (
+    UpgradeInterestService,
+    get_upgrade_interest_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +90,15 @@ class UsageResponse(BaseModel):
     plan: str
     resets_at: datetime
     can_generate: bool
+
+
+class RegisterInterestRequest(BaseModel):
+    email: str
+
+
+class InterestStatusResponse(BaseModel):
+    registered: bool
+    registered_at: datetime | None = None
 
 
 @router.post("/generate", response_model=GenerateHypeResponse)
@@ -302,6 +315,41 @@ async def get_usage_status(
         resets_at=usage.resets_at,
         can_generate=usage.can_generate,
     )
+
+
+@router.post("/interest", response_model=InterestStatusResponse)
+async def register_upgrade_interest(
+    request: RegisterInterestRequest,
+    user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
+    interest_service: UpgradeInterestService = Depends(get_upgrade_interest_service),
+):
+    """Register user's interest in upgrading to a paid plan."""
+    interest = await interest_service.register_interest(
+        db=db,
+        user_id=user_id,
+        email=request.email,
+    )
+    return InterestStatusResponse(
+        registered=True,
+        registered_at=interest.created_at,
+    )
+
+
+@router.get("/interest/status", response_model=InterestStatusResponse)
+async def get_interest_status(
+    user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
+    interest_service: UpgradeInterestService = Depends(get_upgrade_interest_service),
+):
+    """Check if user has already registered interest in upgrading."""
+    interest = await interest_service.get_interest(db=db, user_id=user_id)
+    if interest:
+        return InterestStatusResponse(
+            registered=True,
+            registered_at=interest.created_at,
+        )
+    return InterestStatusResponse(registered=False)
 
 
 @router.get("/{hype_id}", response_model=HypeHistoryItem)

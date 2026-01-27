@@ -12,6 +12,9 @@ type EventsListProps = {
   onRefetch: () => void;
   isRefetching: boolean;
   canGenerate?: boolean;
+  isInterestRegistered?: boolean;
+  isRegisteringInterest?: boolean;
+  onRegisterInterest?: () => void;
 };
 
 const SkeletonCard = () => (
@@ -42,6 +45,9 @@ export const EventsList = ({
   onRefetch,
   isRefetching,
   canGenerate = true,
+  isInterestRegistered = false,
+  isRegisteringInterest = false,
+  onRegisterInterest,
 }: EventsListProps) => {
   return (
     <div className="space-y-4">
@@ -106,6 +112,9 @@ export const EventsList = ({
               hypeState={getEventHypeState(event.id)}
               onGenerateHype={(managerId) => onGenerateHype(event, managerId)}
               canGenerate={canGenerate}
+              isInterestRegistered={isInterestRegistered}
+              isRegisteringInterest={isRegisteringInterest}
+              onRegisterInterest={onRegisterInterest}
             />
           ))}
         </div>

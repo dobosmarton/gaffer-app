@@ -15,7 +15,7 @@ export const AudioPlayerButton = ({ className }: AudioPlayerButtonProps) => {
       onClick={toggle}
       disabled={state === "loading" || state === "error"}
       className={cn(
-        "h-14 w-14 rounded-full bg-gradient-to-br from-primary-500 to-teal-500 text-white shadow-lg shadow-primary-500/25 transition-all hover:shadow-xl hover:shadow-primary-500/30 hover:scale-105",
+        "h-14 w-14 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl hover:shadow-amber-500/30 hover:scale-105 focus-visible:ring-amber-500",
         state === "loading" && "animate-pulse",
         className
       )}
