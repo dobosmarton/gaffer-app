@@ -8,6 +8,11 @@ export function Footer() {
           <Megaphone className="h-5 w-5 text-amber-500" />
           <span className="font-semibold text-white">Gaffer</span>
         </div>
+        <p className="text-xs text-slate-600 max-w-md text-center">
+          Gaffer uses AI-generated voices inspired by famous coaching styles.
+          These are not the actual voices of the individuals mentioned.
+          No endorsement or affiliation is implied.
+        </p>
         <p className="text-sm text-slate-500">
           © {new Date().getFullYear()} Gaffer. All rights reserved.
         </p>

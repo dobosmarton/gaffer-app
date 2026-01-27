@@ -1,11 +1,11 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Megaphone, Play, Pause } from "lucide-react";
-import { useState, useRef } from "react";
-import { getCurrentUser } from "@/lib/supabase";
+import { Footer } from "@/components/landing/footer";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { ManagersSection } from "@/components/landing/managers-section";
 import { PricingSection } from "@/components/landing/pricing-section";
-import { Footer } from "@/components/landing/footer";
+import { getCurrentUser } from "@/lib/supabase";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Megaphone, Pause, Play } from "lucide-react";
+import { useRef, useState } from "react";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -115,7 +115,7 @@ function LandingPage() {
             <div className="mt-4 flex items-center gap-2 ml-20">
               <span className="text-xl">🏆</span>
               <p className="text-sm font-medium text-slate-400">
-                Sir Alex Ferguson mode • Q3 Budget Review
+                Ferguson style • Q3 Budget Review
               </p>
             </div>
             <audio

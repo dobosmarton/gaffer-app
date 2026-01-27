@@ -37,7 +37,10 @@ export function ManagerCard({ manager }: { manager: Manager }) {
         </button>
         <div className="ml-4 text-left">
           <p className="font-semibold text-white">{manager.name}</p>
-          <p className="text-sm text-slate-400">{manager.style}</p>
+          <p className="text-sm text-slate-400">
+            {manager.style}
+            <span className="ml-2 text-[10px] text-slate-500">• AI Voice</span>
+          </p>
         </div>
       </div>
       <audio

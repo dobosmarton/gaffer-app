@@ -6,8 +6,8 @@ export function Waveform({ isPlaying }: { isPlaying: boolean }) {
     <div className="absolute -right-12 top-1/2 -translate-y-1/2 flex items-center gap-[4px] pointer-events-none pr-4">
       {bars.map((height, i) => {
         // Fade out towards the right (last bars get lower opacity)
-        const fadeStart = totalBars * 0.6;
-        const opacity = i < fadeStart ? 0.2 : 0.2 * (1 - (i - fadeStart) / (totalBars - fadeStart));
+        const fadeStart = totalBars * 0.4;
+        const opacity = i < fadeStart ? 0.1 : 0.1 * (1 - (i - fadeStart) / (totalBars - fadeStart));
 
         return (
           <div

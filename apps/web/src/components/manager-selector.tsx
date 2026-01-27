@@ -8,31 +8,31 @@ export type Manager = {
 export const MANAGERS: Manager[] = [
   {
     id: "ferguson",
-    name: "Sir Alex Ferguson",
+    name: "Ferguson Style",
     description: "Intense, demanding, expects winners",
     emoji: "🏆",
   },
   {
     id: "mourinho",
-    name: "José Mourinho",
+    name: "Mourinho Style",
     description: "Tactical, confident, us-vs-them",
     emoji: "😏",
   },
   {
     id: "klopp",
-    name: "Jürgen Klopp",
+    name: "Klopp Style",
     description: "High energy, emotional, togetherness",
     emoji: "🤗",
   },
   {
     id: "guardiola",
-    name: "Pep Guardiola",
+    name: "Guardiola Style",
     description: "Cerebral, obsessive about details",
     emoji: "🧠",
   },
   {
     id: "bielsa",
-    name: "Marcelo Bielsa",
+    name: "Bielsa Style",
     description: "Philosophical, treats everything as life-or-death",
     emoji: "📋",
   },
