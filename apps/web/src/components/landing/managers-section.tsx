@@ -12,9 +12,9 @@ export function ManagersSection() {
   return (
     <section className="mt-24">
       <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-white">Meet Your Manager Styles</h2>
-        <p className="mt-2 text-slate-400">Choose the voice that motivates you</p>
-        <p className="mt-3 text-xs text-slate-500">
+        <h2 className="text-3xl font-bold text-foreground">Meet Your Manager Styles</h2>
+        <p className="mt-2 text-muted-foreground">Choose the voice that motivates you</p>
+        <p className="mt-3 text-xs text-muted-foreground/70">
           All voices are AI-generated for entertainment purposes.
           Not affiliated with or endorsed by any individuals named.
         </p>

@@ -26,9 +26,9 @@ const UsageCard = ({ usage, isRegistered, isRegistering, onRegisterInterest }: U
   if (!usage) {
     return (
       <Card className="p-5 animate-pulse">
-        <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
-        <div className="h-2 w-full bg-gray-100 rounded mb-2" />
-        <div className="h-3 w-24 bg-gray-100 rounded" />
+        <div className="h-4 w-32 bg-secondary rounded mb-3" />
+        <div className="h-2 w-full bg-secondary rounded mb-2" />
+        <div className="h-3 w-24 bg-secondary rounded" />
       </Card>
     );
   }
@@ -52,14 +52,14 @@ const UsageCard = ({ usage, isRegistered, isRegistering, onRegisterInterest }: U
               <Megaphone className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Monthly Speeches</h3>
-              <p className="text-xs text-gray-500 capitalize">{usage.plan} plan</p>
+              <h3 className="font-semibold text-foreground">Monthly Speeches</h3>
+              <p className="text-xs text-muted-foreground capitalize">{usage.plan} plan</p>
             </div>
           </div>
 
           {/* Progress bar */}
           <div className="mb-2">
-            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
                   isAtLimit
@@ -74,10 +74,10 @@ const UsageCard = ({ usage, isRegistered, isRegistering, onRegisterInterest }: U
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <span className={isAtLimit ? "text-red-600 font-medium" : "text-gray-600"}>
+            <span className={isAtLimit ? "text-red-600 font-medium" : "text-muted-foreground"}>
               {usage.used} of {usage.limit} used
             </span>
-            <span className="text-gray-500">
+            <span className="text-muted-foreground">
               Resets in {daysUntilReset} day{daysUntilReset !== 1 ? "s" : ""}
             </span>
           </div>
@@ -149,8 +149,8 @@ function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Your Upcoming Meetings</h1>
-          <p className="mt-1 text-gray-600">Select a meeting and get your pre-match team talk.</p>
+          <h1 className="text-2xl font-bold text-foreground">Your Upcoming Meetings</h1>
+          <p className="mt-1 text-muted-foreground">Select a meeting and get your pre-match team talk.</p>
         </div>
         <div className="w-80 flex-shrink-0">
           <UsageCard

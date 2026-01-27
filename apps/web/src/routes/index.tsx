@@ -3,6 +3,7 @@ import { Footer } from "@/components/landing/footer";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { ManagersSection } from "@/components/landing/managers-section";
 // import { PricingSection } from "@/components/landing/pricing-section";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUser } from "@/lib/supabase";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Megaphone, Pause, Play } from "lucide-react";
@@ -38,7 +39,12 @@ function LandingPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-900 overflow-hidden">
+    <div className="relative min-h-screen bg-background overflow-hidden">
+      {/* Theme toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+
       {/* Decorative elements */}
       <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
@@ -49,21 +55,21 @@ function LandingPage() {
       <div className="relative mx-auto max-w-4xl px-4 py-20">
         <div className="text-center">
           {/* Logo/Title */}
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 backdrop-blur-sm">
             <Megaphone className="h-5 w-5 text-amber-400" />
-            <span className="text-sm font-medium text-slate-300">Pre-meeting motivation</span>
+            <span className="text-sm font-medium text-muted-foreground">Pre-meeting motivation</span>
           </div>
 
           <h1 className="mt-8 text-5xl font-extrabold tracking-tight sm:text-7xl">
-            <span className="bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-foreground via-foreground/80 to-muted-foreground bg-clip-text text-transparent">
               Gaffer
             </span>
-            <span className="mt-2 block text-2xl font-medium text-slate-400">
+            <span className="mt-2 block text-2xl font-medium text-muted-foreground">
               Your Calendar Hype Man
             </span>
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-xl text-slate-300/80">
+          <p className="mx-auto mt-6 max-w-2xl text-xl text-muted-foreground">
             Get AI-generated motivational speeches before your meetings, delivered in the style of
             legendary football managers.
           </p>
@@ -93,9 +99,9 @@ function LandingPage() {
           </div>
 
           {/* Quote card */}
-          <div className="relative mt-16 rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+          <div className="relative mt-16 rounded-2xl border border-border bg-card p-8 backdrop-blur-sm">
             <div className="absolute -top-3 left-8">
-              <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-slate-900">
+              <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
                 SAMPLE HYPE
               </span>
             </div>
@@ -107,7 +113,7 @@ function LandingPage() {
               >
                 {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
               </button>
-              <p className="text-lg italic text-slate-200 leading-relaxed text-left">
+              <p className="text-lg italic text-foreground leading-relaxed text-left">
                 "RIGHT, LISTEN UP. This is it. The board room. 2 PM. They're gonna come at you with
                 spreadsheets, they're gonna question your projections. But YOU — you've done the
                 prep. You walk in there, you OWN that room. Now get out there and make me proud."
@@ -115,7 +121,7 @@ function LandingPage() {
             </div>
             <div className="mt-4 flex items-center gap-2 ml-20">
               <span className="text-xl">🏆</span>
-              <p className="text-sm font-medium text-slate-400">
+              <p className="text-sm font-medium text-muted-foreground">
                 Ferguson style • Q3 Budget Review
               </p>
             </div>

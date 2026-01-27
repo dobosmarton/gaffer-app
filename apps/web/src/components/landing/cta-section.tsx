@@ -14,10 +14,10 @@ export function CTASection() {
           <span className="text-sm font-medium text-amber-300">Free to start</span>
         </div>
 
-        <h2 className="text-4xl font-bold text-white">
+        <h2 className="text-4xl font-bold text-foreground">
           Ready to own the room?
         </h2>
-        <p className="mt-4 text-lg text-slate-400 max-w-md mx-auto">
+        <p className="mt-4 text-lg text-muted-foreground max-w-md mx-auto">
           Get 5 free motivational speeches every month. No credit card needed.
         </p>
 

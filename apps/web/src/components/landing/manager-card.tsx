@@ -25,7 +25,7 @@ export function ManagerCard({ manager }: { manager: Manager }) {
   const handleEnded = () => setIsPlaying(false);
 
   return (
-    <div className="relative rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm overflow-hidden">
+    <div className="relative rounded-2xl border border-border bg-card p-4 backdrop-blur-sm overflow-hidden">
       <Waveform isPlaying={isPlaying} />
       <div className="relative flex items-center z-10">
         <button
@@ -36,10 +36,10 @@ export function ManagerCard({ manager }: { manager: Manager }) {
           {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
         </button>
         <div className="ml-4 text-left">
-          <p className="font-semibold text-white">{manager.name}</p>
-          <p className="text-sm text-slate-400">
+          <p className="font-semibold text-foreground">{manager.name}</p>
+          <p className="text-sm text-muted-foreground">
             {manager.style}
-            <span className="ml-2 text-[10px] text-slate-500">• AI Voice</span>
+            <span className="ml-2 text-[10px] text-muted-foreground/70">• AI Voice</span>
           </p>
         </div>
       </div>

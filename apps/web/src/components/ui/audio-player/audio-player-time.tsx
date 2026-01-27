@@ -9,7 +9,7 @@ type AudioPlayerTimeProps = {
 export const AudioPlayerTime = ({ className }: AudioPlayerTimeProps) => {
   const { currentTime } = useAudioPlayer();
   return (
-    <span className={cn("text-sm tabular-nums text-gray-600", className)}>
+    <span className={cn("text-sm tabular-nums text-muted-foreground", className)}>
       {formatTime(currentTime)}
     </span>
   );

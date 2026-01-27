@@ -34,12 +34,12 @@ export const ManagerDropdown = ({ selected, onSelect, disabled }: ManagerDropdow
           <DropdownMenuItem
             key={manager.id}
             onClick={() => onSelect(manager.id)}
-            className={cn("flex items-center gap-2", selected === manager.id && "bg-gray-100")}
+            className={cn("flex items-center gap-2", selected === manager.id && "bg-secondary")}
           >
             <span className="text-lg">{manager.emoji}</span>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm">{manager.name}</p>
-              <p className="text-xs text-gray-500 truncate">{manager.description}</p>
+              <p className="text-xs text-muted-foreground truncate">{manager.description}</p>
             </div>
           </DropdownMenuItem>
         ))}

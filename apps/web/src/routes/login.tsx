@@ -33,29 +33,29 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900">
+    <div className="flex min-h-screen items-center justify-center bg-background">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card/50 p-8 backdrop-blur-sm shadow-2xl">
         <div className="text-center">
           <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10">
             <Megaphone className="h-6 w-6 text-amber-400" />
           </div>
-          <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+          <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
             Welcome to Gaffer
           </h1>
-          <p className="mt-2 text-slate-400">Sign in to get hyped for your meetings</p>
+          <p className="mt-2 text-muted-foreground">Sign in to get hyped for your meetings</p>
         </div>
 
         <div className="mt-8">
           <Button
             onClick={handleGoogleLogin}
             variant="secondary"
-            className="w-full h-auto py-4 bg-white text-gray-700 hover:bg-gray-50 hover:scale-[1.02] shadow-lg transition-all"
+            className="w-full h-auto py-4 bg-white dark:bg-white text-gray-700 dark:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-50 hover:scale-[1.02] shadow-lg transition-all"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -78,13 +78,13 @@ function LoginPage() {
             Continue with Google
           </Button>
 
-          <p className="mt-4 text-center text-sm text-slate-500">
+          <p className="mt-4 text-center text-sm text-muted-foreground/70">
             We'll request access to your Google Calendar to show your upcoming meetings.
           </p>
         </div>
 
         <div className="mt-8 text-center">
-          <a href="/" className="text-sm text-slate-400 hover:text-slate-300 transition-colors">
+          <a href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             ← Back to home
           </a>
         </div>

@@ -9,7 +9,7 @@ type AudioPlayerDurationProps = {
 export const AudioPlayerDuration = ({ className }: AudioPlayerDurationProps) => {
   const { duration } = useAudioPlayer();
   return (
-    <span className={cn("text-sm tabular-nums text-gray-600", className)}>
+    <span className={cn("text-sm tabular-nums text-muted-foreground", className)}>
       {formatTime(duration)}
     </span>
   );

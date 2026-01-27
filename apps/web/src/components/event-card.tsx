@@ -84,15 +84,15 @@ export const EventCard = ({
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
+            <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
 
             {event.description && (
-              <p className="mt-1 text-sm text-gray-500 line-clamp-2">{event.description}</p>
+              <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{event.description}</p>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4 text-gray-400" />
+                <Clock className="h-4 w-4 text-muted-foreground" />
                 <span>
                   {formatTime(event.start)} - {formatTime(event.end)}
                 </span>
@@ -100,14 +100,14 @@ export const EventCard = ({
 
               {event.location && (
                 <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-gray-400" />
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="truncate max-w-[150px]">{event.location}</span>
                 </div>
               )}
 
               {event.attendees && event.attendees > 1 && (
                 <div className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-gray-400" />
+                  <Users className="h-4 w-4 text-muted-foreground" />
                   <span>{event.attendees} attendees</span>
                 </div>
               )}
@@ -120,8 +120,8 @@ export const EventCard = ({
               className={cn(
                 "rounded-full",
                 isStartingSoon
-                  ? "bg-orange-100 text-orange-700 border-orange-200"
-                  : "bg-gray-100 text-gray-600"
+                  ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800"
+                  : "bg-secondary text-muted-foreground"
               )}
             >
               {formatTimeUntil(timeUntil)}
@@ -167,7 +167,7 @@ export const EventCard = ({
                     "shadow-md",
                     canGenerate
                       ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                      : "bg-gray-300 cursor-not-allowed"
+                      : "bg-muted cursor-not-allowed"
                   )}
                   title={!canGenerate ? "Monthly limit reached" : undefined}
                 >
@@ -197,12 +197,12 @@ export const EventCard = ({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="border-t border-gray-100 bg-gray-50/50">
+            <div className="border-t border-border bg-secondary/50">
               {/* Generating text state */}
               {hypeState.status === "generating_text" && (
                 <div className="p-6 flex items-center justify-center gap-3">
                   <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-muted-foreground">
                     {getManagerName(hypeState.manager)} is preparing your team talk...
                   </span>
                 </div>
@@ -211,8 +211,8 @@ export const EventCard = ({
               {/* Hype text display */}
               {hypeState.hypeText && (
                 <div className="p-6">
-                  <p className="text-gray-700 leading-relaxed italic">"{hypeState.hypeText}"</p>
-                  <p className="mt-3 text-sm font-medium text-gray-500">
+                  <p className="text-foreground leading-relaxed italic">"{hypeState.hypeText}"</p>
+                  <p className="mt-3 text-sm font-medium text-muted-foreground">
                     — {getManagerName(hypeState.manager)}
                   </p>
                 </div>
@@ -222,7 +222,7 @@ export const EventCard = ({
               {hypeState.status === "generating_audio" && (
                 <div className="px-6 pb-6 flex items-center gap-3">
                   <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                  <span className="text-sm text-gray-500">Generating audio...</span>
+                  <span className="text-sm text-muted-foreground">Generating audio...</span>
                 </div>
               )}
 
@@ -230,11 +230,11 @@ export const EventCard = ({
               {hypeState.status === "ready" && hypeState.audioUrl && (
                 <div className="px-6 pb-6">
                   <AudioPlayerProvider src={hypeState.audioUrl}>
-                    <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border">
                       <AudioPlayerButton className="h-10 w-10 text-sm" />
                       <div className="flex-1 space-y-2">
                         <AudioPlayerProgress />
-                        <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <AudioPlayerTime />
                             <span>/</span>
@@ -252,7 +252,7 @@ export const EventCard = ({
                     size="sm"
                     onClick={() => onGenerateHype(selectedManager)}
                     disabled={!canGenerate}
-                    className="mt-3 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className="mt-3 text-muted-foreground hover:text-foreground disabled:opacity-50"
                     title={!canGenerate ? "Monthly limit reached" : undefined}
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
@@ -264,8 +264,8 @@ export const EventCard = ({
               {/* Error state */}
               {hypeState.status === "error" && (
                 <div className="px-6 pb-6">
-                  <div className="p-4 bg-red-50 rounded-lg border border-red-100">
-                    <p className="text-sm text-red-600">
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900">
+                    <p className="text-sm text-red-600 dark:text-red-400">
                       {hypeState.errorMessage || "Something went wrong. Please try again."}
                     </p>
                   </div>
@@ -274,7 +274,7 @@ export const EventCard = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => onGenerateHype(selectedManager)}
-                      className="mt-3 text-gray-500 hover:text-gray-700"
+                      className="mt-3 text-muted-foreground hover:text-foreground"
                     >
                       <RefreshCw className="h-4 w-4 mr-1" />
                       Try again

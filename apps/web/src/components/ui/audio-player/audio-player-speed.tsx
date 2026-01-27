@@ -23,7 +23,7 @@ export const AudioPlayerSpeed = ({ className }: AudioPlayerSpeedProps) => {
         <Button
           variant="ghost"
           size="sm"
-          className={cn("text-gray-600 hover:bg-gray-100", className)}
+          className={cn("text-muted-foreground hover:bg-secondary", className)}
         >
           {playbackRate === 1 ? "1x" : `${playbackRate}x`}
         </Button>
@@ -33,7 +33,7 @@ export const AudioPlayerSpeed = ({ className }: AudioPlayerSpeedProps) => {
           <DropdownMenuItem
             key={speed}
             onClick={() => setPlaybackRate(speed)}
-            className={cn(playbackRate === speed && "bg-gray-100 font-medium")}
+            className={cn(playbackRate === speed && "bg-secondary font-medium")}
           >
             {speed === 1 ? "Normal" : `${speed}x`}
           </DropdownMenuItem>
