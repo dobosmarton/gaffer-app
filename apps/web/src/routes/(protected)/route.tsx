@@ -1,8 +1,9 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useUsage } from "@/hooks/use-usage";
 import { getCurrentUser } from "@/lib/supabase";
 import { useSupabase } from "@/lib/supabase-provider";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { Megaphone } from "lucide-react";
 
 export const Route = createFileRoute("/(protected)")({
   beforeLoad: async () => {
@@ -13,6 +14,33 @@ export const Route = createFileRoute("/(protected)")({
   },
   component: ProtectedLayout,
 });
+
+const UsageIndicator = () => {
+  const { usage, isLoading } = useUsage();
+
+  if (isLoading || !usage) {
+    return null;
+  }
+
+  const percentage = (usage.used / usage.limit) * 100;
+  const isNearLimit = percentage >= 80;
+  const isAtLimit = usage.used >= usage.limit;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-sm">
+      <div className="flex items-center gap-1.5">
+        <div
+          className={`h-2 w-2 rounded-full ${
+            isAtLimit ? "bg-red-500" : isNearLimit ? "bg-amber-500" : "bg-green-500"
+          }`}
+        />
+        <span className={isAtLimit ? "text-red-600 font-medium" : "text-gray-600"}>
+          {usage.used}/{usage.limit} speeches
+        </span>
+      </div>
+    </div>
+  );
+};
 
 function ProtectedLayout() {
   const { signOut, user } = useSupabase();
@@ -29,6 +57,7 @@ function ProtectedLayout() {
           </a>
 
           <div className="flex items-center gap-4">
+            <UsageIndicator />
             <span className="text-sm text-gray-600">{user?.email}</span>
             <Button variant="ghost" size="sm" onClick={signOut}>
               Sign out

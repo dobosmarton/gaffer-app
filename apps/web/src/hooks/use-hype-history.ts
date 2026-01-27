@@ -57,15 +57,18 @@ export const useHypeHistory = (options?: {
     enabled: (options?.enabled ?? true) && !!session?.access_token,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
-}
+};
 
-export const useEventHypeHistory = (googleEventId: string, options?: {
-  limit?: number;
-  enabled?: boolean;
-}) => {
+export const useEventHypeHistory = (
+  googleEventId: string,
+  options?: {
+    limit?: number;
+    enabled?: boolean;
+  }
+) => {
   return useHypeHistory({
     googleEventId,
     limit: options?.limit ?? 5,
     enabled: options?.enabled ?? true,
   });
-}
+};

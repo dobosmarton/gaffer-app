@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text
+from sqlalchemy import DateTime, Index, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,9 +13,10 @@ class UserGoogleToken(Base):
 
     __tablename__ = "user_google_tokens"
 
+    # FK constraint exists in database, not defined here to avoid SQLAlchemy
+    # trying to resolve auth.users which is a Supabase internal table
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="CASCADE"),
         primary_key=True,
     )
     refresh_token: Mapped[str] = mapped_column(Text, nullable=False)

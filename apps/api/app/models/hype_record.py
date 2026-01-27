@@ -20,9 +20,10 @@ class HypeRecord(Base):
         primary_key=True,
         server_default=func.gen_random_uuid(),
     )
+    # FK constraint exists in database, not defined here to avoid SQLAlchemy
+    # trying to resolve auth.users which is a Supabase internal table
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="CASCADE"),
         nullable=False,
     )
     calendar_event_id: Mapped[Optional[UUID]] = mapped_column(

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Index, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -20,9 +20,10 @@ class CalendarEvent(Base):
         primary_key=True,
         server_default=func.gen_random_uuid(),
     )
+    # FK constraint exists in database, not defined here to avoid SQLAlchemy
+    # trying to resolve auth.users which is a Supabase internal table
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="CASCADE"),
         nullable=False,
     )
     google_event_id: Mapped[str] = mapped_column(Text, nullable=False)

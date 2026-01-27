@@ -4,6 +4,7 @@ from app.models.calendar_event import CalendarEvent
 from app.models.calendar_sync_state import CalendarSyncState
 from app.models.hype_record import HypeRecord
 from app.models.user_google_token import UserGoogleToken
+from app.models.user_subscription import UserSubscription
 
 __all__ = [
     "Base",
@@ -11,4 +12,5 @@ __all__ = [
     "CalendarSyncState",
     "HypeRecord",
     "UserGoogleToken",
+    "UserSubscription",
 ]

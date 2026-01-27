@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey
+from sqlalchemy import DateTime
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -15,9 +15,10 @@ class CalendarSyncState(Base):
 
     __tablename__ = "calendar_sync_state"
 
+    # FK constraint exists in database, not defined here to avoid SQLAlchemy
+    # trying to resolve auth.users which is a Supabase internal table
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="CASCADE"),
         primary_key=True,
     )
     last_sync: Mapped[Optional[datetime]] = mapped_column(

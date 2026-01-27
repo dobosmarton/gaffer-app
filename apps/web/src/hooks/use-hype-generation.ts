@@ -1,7 +1,8 @@
 import type { CalendarEvent, EventHypeState } from "@/components/event-card";
 import { useSupabase } from "@/lib/supabase-provider";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { UsageLimitError } from "./use-usage";
 
 export type HypeStatesMap = Record<string, EventHypeState>;
 
@@ -21,31 +22,29 @@ const DEFAULT_HYPE_STATE: EventHypeState = {
 
 export const useHypeGeneration = (events?: CalendarEvent[]) => {
   const { session } = useSupabase();
+  const queryClient = useQueryClient();
   const [hypeStates, setHypeStates] = useState<HypeStatesMap>({});
 
   const mergedHypeStates = useMemo(() => {
-    
     if (!events || events.length === 0) return hypeStates;
 
-        const updates = events.reduce<HypeStatesMap>((acc, event) => {
-          const existingState = hypeStates[event.id];
-          // Only initialize if we don't already have state and event has hype data
-          if ((!existingState || existingState.status === "idle") && event.latestHype) {
-            acc[event.id] = {
-              status: "ready",
-              hypeText: event.latestHype.hypeText,
-              audioUrl: event.latestHype.audioUrl,
-              manager: event.latestHype.managerStyle,
-            };
-          }
-          return acc;
-        }, {});
+    const updates = events.reduce<HypeStatesMap>((acc, event) => {
+      const existingState = hypeStates[event.id];
+      // Only initialize if we don't already have state and event has hype data
+      if ((!existingState || existingState.status === "idle") && event.latestHype) {
+        acc[event.id] = {
+          status: "ready",
+          hypeText: event.latestHype.hypeText,
+          audioUrl: event.latestHype.audioUrl,
+          manager: event.latestHype.managerStyle,
+        };
+      }
+      return acc;
+    }, {});
 
-        if (Object.keys(updates).length === 0) return hypeStates;
-        return { ...hypeStates, ...updates };
-
+    if (Object.keys(updates).length === 0) return hypeStates;
+    return { ...hypeStates, ...updates };
   }, [events, hypeStates]);
-
 
   // Clean up blob URLs when component unmounts or state changes
   useEffect(() => {
@@ -93,7 +92,15 @@ export const useHypeGeneration = (events?: CalendarEvent[]) => {
 
       if (!textResponse.ok) {
         const error = await textResponse.json().catch(() => ({}));
-        throw new Error(error.detail || "Failed to generate hype");
+        // Handle usage limit error specially
+        if (textResponse.status === 429 && error.detail?.used !== undefined) {
+          throw new UsageLimitError(error.detail);
+        }
+        throw new Error(
+          typeof error.detail === "string"
+            ? error.detail
+            : error.detail?.message || "Failed to generate hype"
+        );
       }
 
       const textData = await textResponse.json();
@@ -142,12 +149,22 @@ export const useHypeGeneration = (events?: CalendarEvent[]) => {
         status: "ready",
         audioUrl,
       });
+      // Invalidate usage cache after successful generation
+      queryClient.invalidateQueries({ queryKey: ["usage"] });
     },
     onError: (err, { event }) => {
       console.error("Failed to generate hype:", err);
+      // Include error message for display
+      const errorMessage =
+        err instanceof UsageLimitError
+          ? `Monthly limit reached (${err.used}/${err.limit})`
+          : err.message || "Failed to generate hype";
       updateEventState(event.id, {
         status: "error",
+        errorMessage,
       });
+      // Invalidate usage cache on any error (especially limit errors)
+      queryClient.invalidateQueries({ queryKey: ["usage"] });
     },
   });
 

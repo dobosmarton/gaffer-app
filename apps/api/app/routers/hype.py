@@ -21,6 +21,10 @@ from app.services.hype_storage_service import (
     HypeStorageService,
     get_hype_storage_service,
 )
+from app.services.usage_service import (
+    UsageService,
+    get_usage_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,14 +80,36 @@ class HypeHistoryResponse(BaseModel):
     records: list[HypeHistoryItem]
 
 
+class UsageResponse(BaseModel):
+    used: int
+    limit: int
+    plan: str
+    resets_at: datetime
+    can_generate: bool
+
+
 @router.post("/generate", response_model=GenerateHypeResponse)
 async def generate_hype(
     request: GenerateHypeRequest,
     user_id: str = Depends(get_user_id_from_token),
     db: AsyncSession = Depends(get_db),
     storage_service: HypeStorageService = Depends(get_hype_storage_service),
+    usage_service: UsageService = Depends(get_usage_service),
 ):
     """Generate hype text using Claude and optionally persist to database."""
+    # Check usage limit before generating
+    usage = await usage_service.get_usage_info(db, user_id)
+    if not usage.can_generate:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": f"Monthly limit reached ({usage.used}/{usage.limit} speeches)",
+                "used": usage.used,
+                "limit": usage.limit,
+                "resets_at": usage.resets_at.isoformat(),
+            },
+        )
+
     hype_record = None
 
     # Create hype record if persisting
@@ -258,6 +284,23 @@ async def get_hype_history(
             )
             for r in records
         ]
+    )
+
+
+@router.get("/usage", response_model=UsageResponse)
+async def get_usage_status(
+    user_id: str = Depends(get_user_id_from_token),
+    db: AsyncSession = Depends(get_db),
+    usage_service: UsageService = Depends(get_usage_service),
+):
+    """Get current usage status for the authenticated user."""
+    usage = await usage_service.get_usage_info(db, user_id)
+    return UsageResponse(
+        used=usage.used,
+        limit=usage.limit,
+        plan=usage.plan,
+        resets_at=usage.resets_at,
+        can_generate=usage.can_generate,
     )
 
 

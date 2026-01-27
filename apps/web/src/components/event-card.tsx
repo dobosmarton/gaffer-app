@@ -38,6 +38,7 @@ export type EventHypeState = {
   hypeText: string | null;
   audioUrl: string | null;
   manager: string;
+  errorMessage?: string;
 };
 
 type EventCardProps = {
@@ -45,9 +46,16 @@ type EventCardProps = {
   hypeState: EventHypeState;
   onGenerateHype: (managerId: string) => void;
   className?: string;
+  canGenerate?: boolean;
 };
 
-export const EventCard = ({ event, hypeState, onGenerateHype, className }: EventCardProps) => {
+export const EventCard = ({
+  event,
+  hypeState,
+  onGenerateHype,
+  className,
+  canGenerate = true,
+}: EventCardProps) => {
   // Use manager from hype state if available, otherwise default to ferguson
   // The hype state manager is set when data is loaded from the backend
   const [selectedManager, setSelectedManager] = useState(hypeState.manager || "ferguson");
@@ -118,20 +126,28 @@ export const EventCard = ({ event, hypeState, onGenerateHype, className }: Event
               <ManagerDropdown
                 selected={selectedManager}
                 onSelect={setSelectedManager}
-                disabled={isGenerating}
+                disabled={isGenerating || !canGenerate}
               />
 
               <Button
                 onClick={() => onGenerateHype(selectedManager)}
-                disabled={isGenerating}
+                disabled={isGenerating || !canGenerate}
                 size="sm"
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-md"
+                className={cn(
+                  "shadow-md",
+                  canGenerate
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                    : "bg-gray-300 cursor-not-allowed"
+                )}
+                title={!canGenerate ? "Monthly limit reached" : undefined}
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="hidden sm:inline ml-1">Generating...</span>
                   </>
+                ) : !canGenerate ? (
+                  "Limit Reached"
                 ) : (
                   "Hype Me"
                 )}
@@ -204,10 +220,12 @@ export const EventCard = ({ event, hypeState, onGenerateHype, className }: Event
                     variant="ghost"
                     size="sm"
                     onClick={() => onGenerateHype(selectedManager)}
-                    className="mt-3 text-gray-500 hover:text-gray-700"
+                    disabled={!canGenerate}
+                    className="mt-3 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    title={!canGenerate ? "Monthly limit reached" : undefined}
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
-                    Regenerate
+                    {canGenerate ? "Regenerate" : "Limit Reached"}
                   </Button>
                 </div>
               )}
@@ -216,17 +234,21 @@ export const EventCard = ({ event, hypeState, onGenerateHype, className }: Event
               {hypeState.status === "error" && (
                 <div className="px-6 pb-6">
                   <div className="p-4 bg-red-50 rounded-lg border border-red-100">
-                    <p className="text-sm text-red-600">Something went wrong. Please try again.</p>
+                    <p className="text-sm text-red-600">
+                      {hypeState.errorMessage || "Something went wrong. Please try again."}
+                    </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onGenerateHype(selectedManager)}
-                    className="mt-3 text-gray-500 hover:text-gray-700"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-1" />
-                    Try again
-                  </Button>
+                  {canGenerate && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onGenerateHype(selectedManager)}
+                      className="mt-3 text-gray-500 hover:text-gray-700"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Try again
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
