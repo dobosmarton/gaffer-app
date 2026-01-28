@@ -103,7 +103,7 @@ class InterestStatusResponse(BaseModel):
 
 
 @router.post("/generate", response_model=GenerateHypeResponse)
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 async def generate_hype(
     request: GenerateHypeRequest,
     http_request: Request,

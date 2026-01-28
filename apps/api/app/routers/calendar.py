@@ -66,7 +66,7 @@ class SyncResponse(BaseModel):
 
 
 @router.post("/sync", response_model=SyncResponse)
-@limiter.limit("1/minute")
+@limiter.limit("10/minute")
 async def sync_calendar(
     request: Request,
     force_full: bool = False,
