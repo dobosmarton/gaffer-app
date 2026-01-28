@@ -3,12 +3,13 @@ from datetime import datetime
 from typing import Optional
 
 from elevenlabs import ElevenLabs, VoiceSettings
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
+from app.rate_limiter import limiter
 from app.routers.auth import get_user_id_from_token
 from app.services.database import get_db
 from app.services.hype_generator import (
@@ -45,11 +46,11 @@ MANAGER_VOICE_IDS: dict[str, str] = {
 
 
 class GenerateHypeRequest(BaseModel):
-    event_title: str
-    event_description: str | None = None
+    event_title: str = Field(..., max_length=500)
+    event_description: str | None = Field(None, max_length=5000)
     event_time: str
-    manager_style: str = "ferguson"
-    google_event_id: str | None = None  # Optional link to calendar event
+    manager_style: str = Field("ferguson", max_length=50)
+    google_event_id: str | None = Field(None, max_length=255)
     persist: bool = True  # Whether to save to database
 
 
@@ -63,10 +64,10 @@ class GenerateHypeResponse(BaseModel):
 
 
 class AudioRequest(BaseModel):
-    text: str
-    voice_id: str | None = None
-    manager: str | None = None  # Used to select manager-specific voice
-    hype_id: str | None = None  # If provided, persist audio to this record
+    text: str = Field(..., max_length=10000)
+    voice_id: str | None = Field(None, max_length=100)
+    manager: str | None = Field(None, max_length=50)
+    hype_id: str | None = Field(None, max_length=100)
 
 
 class HypeHistoryItem(BaseModel):
@@ -93,7 +94,7 @@ class UsageResponse(BaseModel):
 
 
 class RegisterInterestRequest(BaseModel):
-    email: str
+    email: EmailStr
 
 
 class InterestStatusResponse(BaseModel):
@@ -102,8 +103,10 @@ class InterestStatusResponse(BaseModel):
 
 
 @router.post("/generate", response_model=GenerateHypeResponse)
+@limiter.limit("5/minute")
 async def generate_hype(
     request: GenerateHypeRequest,
+    http_request: Request,
     user_id: str = Depends(get_user_id_from_token),
     db: AsyncSession = Depends(get_db),
     storage_service: HypeStorageService = Depends(get_hype_storage_service),
@@ -180,8 +183,10 @@ async def generate_hype(
 
 
 @router.post("/audio")
+@limiter.limit("10/minute")
 async def generate_audio(
     request: AudioRequest,
+    http_request: Request,
     settings: Settings = Depends(get_settings),
     user_id: str = Depends(get_user_id_from_token),
     db: AsyncSession = Depends(get_db),

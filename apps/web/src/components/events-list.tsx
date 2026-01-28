@@ -83,7 +83,9 @@ export const EventsList = ({
 
       {error && !isLoading && (
         <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 p-6 text-center">
-          <p className="text-red-700 dark:text-red-400 font-medium">Failed to load calendar events</p>
+          <p className="text-red-700 dark:text-red-400 font-medium">
+            Failed to load calendar events
+          </p>
           <p className="text-red-600 dark:text-red-500 text-sm mt-1">{error.message}</p>
           <Button
             variant="ghost"
@@ -99,7 +101,9 @@ export const EventsList = ({
         <div className="rounded-xl border border-dashed border-border bg-secondary/50 p-8 text-center">
           <Calendar className="h-10 w-10 text-muted-foreground mx-auto" />
           <p className="mt-3 text-foreground font-medium">No upcoming meetings</p>
-          <p className="text-muted-foreground text-sm mt-1">You're all clear for the next 24 hours!</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            You're all clear for the next 24 hours!
+          </p>
         </div>
       )}
 

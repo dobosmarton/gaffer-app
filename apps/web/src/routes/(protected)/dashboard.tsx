@@ -103,8 +103,7 @@ const UsageCard = ({ usage, isRegistered, isRegistering, onRegisterInterest }: U
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4 mr-1" />
-                      I want more speeches
+                      <Sparkles className="h-4 w-4 mr-1" />I want more speeches
                     </>
                   )}
                 </Button>
@@ -150,7 +149,9 @@ function Dashboard() {
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Your Upcoming Meetings</h1>
-          <p className="mt-1 text-muted-foreground">Select a meeting and get your pre-match team talk.</p>
+          <p className="mt-1 text-muted-foreground">
+            Select a meeting and get your pre-match team talk.
+          </p>
         </div>
         <div className="w-80 flex-shrink-0">
           <UsageCard

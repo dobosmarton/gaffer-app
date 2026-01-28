@@ -57,7 +57,9 @@ function LandingPage() {
           {/* Logo/Title */}
           <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 backdrop-blur-sm">
             <Megaphone className="h-5 w-5 text-amber-400" />
-            <span className="text-sm font-medium text-muted-foreground">Pre-meeting motivation</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              Pre-meeting motivation
+            </span>
           </div>
 
           <h1 className="mt-8 text-5xl font-extrabold tracking-tight sm:text-7xl">

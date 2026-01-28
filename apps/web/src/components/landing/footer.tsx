@@ -9,9 +9,8 @@ export function Footer() {
           <span className="font-semibold text-foreground">Gaffer</span>
         </div>
         <p className="text-xs text-muted-foreground/70 max-w-md text-center">
-          Gaffer uses AI-generated voices inspired by famous coaching styles.
-          These are not the actual voices of the individuals mentioned.
-          No endorsement or affiliation is implied.
+          Gaffer uses AI-generated voices inspired by famous coaching styles. These are not the
+          actual voices of the individuals mentioned. No endorsement or affiliation is implied.
         </p>
         <p className="text-sm text-muted-foreground">
           © {new Date().getFullYear()} Gaffer. All rights reserved.

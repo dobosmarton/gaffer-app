@@ -3,10 +3,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.rate_limiter import limiter
 from app.routers.auth import get_user_id_from_token
 from app.services.database import get_db
 from app.services.calendar_sync_service import (
@@ -65,7 +66,9 @@ class SyncResponse(BaseModel):
 
 
 @router.post("/sync", response_model=SyncResponse)
+@limiter.limit("1/minute")
 async def sync_calendar(
+    request: Request,
     force_full: bool = False,
     user_id: str = Depends(get_user_id_from_token),
     db: AsyncSession = Depends(get_db),
