@@ -76,7 +76,7 @@ export const EventCard = ({
     <Card
       className={cn(
         "overflow-hidden transition-shadow hover:shadow-md",
-        isStartingSoon && "border-orange-200 bg-orange-50/50",
+        isStartingSoon && "border-orange-500/50 dark:border-orange-500/30",
         className
       )}
     >
@@ -118,10 +118,10 @@ export const EventCard = ({
             <Badge
               variant={isStartingSoon ? "destructive" : "secondary"}
               className={cn(
-                "rounded-full",
+                "rounded-full cursor-default",
                 isStartingSoon
-                  ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800"
-                  : "bg-secondary text-muted-foreground"
+                  ? "bg-transparent text-orange-500 border border-orange-500/50 hover:bg-transparent"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary"
               )}
             >
               {formatTimeUntil(timeUntil)}
@@ -137,7 +137,7 @@ export const EventCard = ({
 
               {!canGenerate && onRegisterInterest ? (
                 isInterestRegistered ? (
-                  <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                  <div className="flex items-center gap-1.5 text-xs text-amber-500 border border-amber-500/30 px-3 py-2 rounded-lg">
                     <Check className="h-3.5 w-3.5" />
                     <span>Notified</span>
                   </div>
