@@ -100,6 +100,9 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 - **Auth**: Supabase Auth
 - **Storage**: Supabase Storage
 - **Package Manager**: pnpm (monorepo)
+- **Frontend Hosting**: Cloudflare Pages
+- **Backend Hosting**: Fly.io
+- **CI**: GitHub Actions
 
 ## Project Structure
 
@@ -267,6 +270,57 @@ pnpm run dev
 - Backend: http://localhost:8000
 - API Docs: http://localhost:8000/docs
 
+## Deployment
+
+### Frontend (Cloudflare Pages)
+
+The frontend is deployed via Cloudflare Pages with GitHub integration:
+
+1. Connect your GitHub repo in Cloudflare Pages dashboard
+2. Set build command: `pnpm --filter @gaffer/web build`
+3. Set build output directory: `apps/web/dist`
+4. Set root directory: `/`
+5. Add environment variables in Cloudflare dashboard:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_API_URL` (your Fly.io backend URL)
+
+### Backend (Fly.io)
+
+The backend is deployed via Fly.io with GitHub integration:
+
+1. Install flyctl and authenticate: `fly auth login`
+2. Create app from `apps/api`: `fly launch`
+3. Set secrets:
+   ```bash
+   fly secrets set DATABASE_URL=... \
+     SUPABASE_URL=... \
+     SUPABASE_SERVICE_ROLE_KEY=... \
+     GOOGLE_CLIENT_ID=... \
+     GOOGLE_CLIENT_SECRET=... \
+     TOKEN_ENCRYPTION_KEY=... \
+     ANTHROPIC_API_KEY=... \
+     ELEVENLABS_API_KEY=... \
+     FRONTEND_URL=https://your-app.pages.dev
+   ```
+4. Connect GitHub for auto-deploy in Fly.io dashboard
+
+### Production OAuth Setup
+
+Update redirect URIs for production:
+1. **Supabase**: Authentication → URL Configuration → Add production URL to redirect URLs
+2. **Google Cloud Console**: Add production callback URL to authorized redirect URIs
+
+### CI/CD
+
+GitHub Actions runs on every push and PR:
+- TypeScript type checking
+- ESLint linting
+
+Deployments are handled by native GitHub integrations:
+- Cloudflare Pages auto-deploys on push to main
+- Fly.io auto-deploys on push to main
+
 ## Database Commands
 
 ```bash
@@ -320,6 +374,10 @@ alembic current
 - **SQLAlchemy direct access**: Backend uses SQLAlchemy with service-level DB access
 - **Supabase Auth**: JWT verification for all API endpoints
 - **Supabase Storage**: Audio files stored securely with user-scoped paths
+- **Rate limiting**: API endpoints protected with slowapi (10/minute for hype generation)
+- **Security headers**: HSTS, X-Content-Type-Options, X-Frame-Options
+- **Input validation**: Pydantic validation with length limits on all inputs
+- **CSP**: Content Security Policy headers on frontend
 
 ## License
 
