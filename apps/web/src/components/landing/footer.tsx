@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Megaphone } from "lucide-react";
 
 export function Footer() {
@@ -12,6 +13,21 @@ export function Footer() {
           Gaffer uses AI-generated voices inspired by famous coaching styles. These are not the
           actual voices of the individuals mentioned. No endorsement or affiliation is implied.
         </p>
+        <div className="flex items-center gap-4 text-sm">
+          <Link
+            to="/privacy"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Privacy Policy
+          </Link>
+          <span className="text-muted-foreground/50">·</span>
+          <Link
+            to="/terms"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Terms of Service
+          </Link>
+        </div>
         <p className="text-sm text-muted-foreground">
           © {new Date().getFullYear()} Gaffer. All rights reserved.
         </p>
