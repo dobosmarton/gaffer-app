@@ -19,10 +19,13 @@ from sqlalchemy import select, update, and_, or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import Depends
+
 from app.config import Settings, get_settings
 from app.models import CalendarEvent as CalendarEventModel
 from app.models import CalendarSyncState as CalendarSyncStateModel
 from app.models import HypeRecord as HypeRecordModel
+from app.services.cache_service import CacheService, get_cache_service
 from app.services.google_token_service import (
     GoogleTokenService,
     NoRefreshTokenError,
@@ -82,9 +85,9 @@ class CachedEvent:
 class CalendarSyncService:
     """Service for syncing calendar events from Google Calendar."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, cache: CacheService):
         self.settings = settings
-        self.token_service = GoogleTokenService(settings)
+        self.token_service = GoogleTokenService(settings, cache)
 
     async def get_sync_state(self, db: AsyncSession, user_id: str) -> dict:
         """Get the sync state for a user."""
@@ -455,7 +458,9 @@ class CalendarSyncService:
         return events
 
 
-def get_calendar_sync_service() -> CalendarSyncService:
+def get_calendar_sync_service(
+    cache: CacheService = Depends(get_cache_service),
+) -> CalendarSyncService:
     """Get a CalendarSyncService instance."""
     settings = get_settings()
-    return CalendarSyncService(settings)
+    return CalendarSyncService(settings, cache)
