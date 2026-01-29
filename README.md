@@ -37,21 +37,22 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 │          │    ┌──────────────┘               │       │                │  │
 │          │    │    ┌─────────────────────────┘       │                │  │
 │          ▼    ▼    ▼                                 │                │  │
-│  ┌──────────────────────┐                            │                │  │
-│  │    SQLAlchemy ORM    │                            │                │  │
-│  └──────────┬───────────┘                            │                │  │
-│             │                                        │                │  │
-└─────────────┼────────────────────────────────────────┼────────────────┼──┘
-              │                                        │                │
-              ▼                                        ▼                ▼
-    ┌─────────────────┐                    ┌─────────────────┐  ┌─────────────┐
-    │   PostgreSQL    │                    │Supabase Storage │  │Supabase Auth│
-    │   (Supabase)    │                    │                 │  │             │
-    │                 │                    │  • Audio files  │  │ • JWT verify│
-    │  • tokens (enc) │                    └─────────────────┘  └─────────────┘
-    │  • events cache │
-    │  • sync state   │
-    │  • hype records │
+│  ┌──────────────────────┐  ┌──────────────────────┐  │                │  │
+│  │    SQLAlchemy ORM    │  │    Cache Service     │  │                │  │
+│  └──────────┬───────────┘  └──────────┬───────────┘  │                │  │
+│             │                         │              │                │  │
+└─────────────┼─────────────────────────┼──────────────┼────────────────┼──┘
+              │                         │              │                │
+              ▼                         ▼              ▼                ▼
+    ┌─────────────────┐       ┌─────────────────┐ ┌─────────────┐ ┌─────────────┐
+    │   PostgreSQL    │       │     Redis       │ │  Supabase   │ │  Supabase   │
+    │   (Supabase)    │       │   (Upstash)     │ │   Storage   │ │    Auth     │
+    │                 │       │                 │ │             │ │             │
+    │  • tokens (enc) │       │ • access tokens │ │ • Audio     │ │ • JWT verify│
+    │  • events cache │       │   (~50min TTL)  │ │   files     │ └─────────────┘
+    │  • sync state   │       │ • rate limits   │ └─────────────┘
+    │  • hype records │       └─────────────────┘
+    │  • subscriptions│
     └────────┬────────┘
              │
              │ encrypted Google refresh tokens
@@ -90,13 +91,16 @@ Gaffer connects to your Google Calendar and delivers AI-generated football manag
 - **AI Text Generation**: Anthropic Claude (claude-sonnet-4-20250514)
 - **Text-to-Speech**: ElevenLabs SDK (streaming)
 - **Database**: SQLAlchemy 2.0 (async) with asyncpg
+- **Caching**: Redis (Upstash) with in-memory fallback
 - **Auth Validation**: Supabase Auth (JWT verification)
 - **File Storage**: Supabase Storage (audio files)
 - **Migrations**: Alembic
 - **Token Encryption**: Cryptography (Fernet)
+- **Testing**: pytest with testcontainers (PostgreSQL)
 
 ### Infrastructure
 - **Database**: Supabase (PostgreSQL with PgBouncer)
+- **Cache**: Upstash Redis (Fly.io native integration)
 - **Auth**: Supabase Auth
 - **Storage**: Supabase Storage
 - **Package Manager**: pnpm (monorepo)
@@ -155,8 +159,13 @@ gaffer/
 │       ├── migrations/               # Alembic migrations
 │       │   ├── env.py
 │       │   └── versions/
+│       ├── tests/                    # Test suite
+│       │   ├── conftest.py           # Shared fixtures
+│       │   └── unit/
+│       │       └── services/         # Service unit tests
 │       ├── alembic.ini
-│       └── requirements.txt
+│       ├── requirements.txt
+│       └── requirements-dev.txt      # Test dependencies
 │
 ├── package.json                      # Workspace root
 ├── pnpm-workspace.yaml
@@ -226,6 +235,9 @@ ANTHROPIC_API_KEY=sk-ant-...
 # ElevenLabs
 ELEVENLABS_API_KEY=your_elevenlabs_key
 ELEVENLABS_VOICE_ID=wo6udizrrtpIxWGp2qJk
+
+# Redis (optional - falls back to in-memory cache if not set)
+REDIS_URL=redis://default:password@your-redis-host:6379
 ```
 
 Generate a Fernet encryption key:
@@ -301,6 +313,7 @@ The backend is deployed via Fly.io with GitHub integration:
      TOKEN_ENCRYPTION_KEY=... \
      ANTHROPIC_API_KEY=... \
      ELEVENLABS_API_KEY=... \
+     REDIS_URL=... \
      FRONTEND_URL=https://your-app.pages.dev
    ```
 4. Connect GitHub for auto-deploy in Fly.io dashboard
@@ -314,8 +327,16 @@ Update redirect URIs for production:
 ### CI/CD
 
 GitHub Actions runs on every push and PR:
+
+**Frontend:**
 - TypeScript type checking
 - ESLint linting
+- Build verification
+
+**Backend:**
+- Unit tests (pytest, SQLite)
+- Integration tests (pytest, PostgreSQL via testcontainers)
+- Coverage reporting
 
 Deployments are handled by native GitHub integrations:
 - Cloudflare Pages auto-deploys on push to main
@@ -339,6 +360,67 @@ alembic revision --autogenerate -m "description"
 alembic current
 ```
 
+## Testing
+
+The backend has a comprehensive test suite with 70 tests covering services and business logic.
+
+### Test Architecture
+
+**Unit tests** run fast without external dependencies and cover:
+- Token encryption/decryption
+- Cache service with fallback behavior
+- Hype text generation and audio tag sanitization
+- Cache hit scenarios
+
+**Integration tests** use real PostgreSQL via Docker and cover:
+- Database operations (store/retrieve tokens, subscriptions)
+- Usage tracking and monthly limits
+- Token refresh flows
+
+### Running Tests
+
+```bash
+cd apps/api
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install dev dependencies (first time only)
+pip install -r requirements-dev.txt
+
+# Run unit tests only (fast, no Docker needed)
+pytest
+
+# Run integration tests (requires Docker)
+pytest -m integration
+
+# Run all tests
+pytest -m ""
+
+# Run with coverage report
+pytest --cov=app --cov-report=html
+```
+
+### Test Dependencies
+
+Dev dependencies in `requirements-dev.txt`:
+- **pytest** - Test framework
+- **pytest-asyncio** - Async test support
+- **pytest-cov** - Coverage reporting
+- **testcontainers** - PostgreSQL Docker containers for integration tests
+- **respx** - HTTP request mocking
+- **freezegun** - Time mocking for date-dependent tests
+- **aiosqlite** - SQLite async driver for unit tests
+
+### CI/CD Test Pipeline
+
+GitHub Actions runs tests automatically on every push and PR:
+
+1. **Unit tests** - Fast feedback, no external services
+2. **Integration tests** - Full database tests with testcontainers
+
+Both test suites must pass before deployment.
+
 ## Manager Personalities
 
 | Manager | Style |
@@ -361,7 +443,7 @@ alembic current
 7. Frontend discards Google tokens - only keeps Supabase JWT
 8. All subsequent API calls use Supabase JWT for auth
 9. Backend retrieves encrypted refresh token, exchanges for access token
-10. Access tokens cached in memory (~50 min TTL)
+10. Access tokens cached in Redis (~50 min TTL)
 11. If refresh token revoked, user sees "Reconnect Google" banner
 ```
 
@@ -369,7 +451,7 @@ alembic current
 
 - **Tokens encrypted at rest**: Google refresh tokens stored with Fernet encryption
 - **BFF pattern**: Frontend never handles Google tokens after initial OAuth
-- **Short-lived access tokens**: Cached for 50 minutes, auto-refreshed
+- **Short-lived access tokens**: Cached in Redis for 50 minutes, auto-refreshed
 - **RLS enabled**: Database row-level security on all tables
 - **SQLAlchemy direct access**: Backend uses SQLAlchemy with service-level DB access
 - **Supabase Auth**: JWT verification for all API endpoints
@@ -378,6 +460,19 @@ alembic current
 - **Security headers**: HSTS, X-Content-Type-Options, X-Frame-Options
 - **Input validation**: Pydantic validation with length limits on all inputs
 - **CSP**: Content Security Policy headers on frontend
+
+## Caching
+
+The backend uses a two-tier caching strategy:
+
+1. **Primary**: Redis (Upstash on Fly.io) for production
+2. **Fallback**: In-memory cache if Redis is unavailable
+
+Cached data:
+- Google access tokens (~50 min TTL)
+- Rate limiting counters
+
+The cache service automatically falls back to in-memory storage if Redis connection fails, ensuring the application remains functional.
 
 ## License
 
