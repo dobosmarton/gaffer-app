@@ -105,8 +105,8 @@ class InterestStatusResponse(BaseModel):
 @router.post("/generate", response_model=GenerateHypeResponse)
 @limiter.limit("10/minute")
 async def generate_hype(
-    request: GenerateHypeRequest,
-    http_request: Request,
+    request: Request,
+    body: GenerateHypeRequest,
     user_id: str = Depends(get_user_id_from_token),
     db: AsyncSession = Depends(get_db),
     storage_service: HypeStorageService = Depends(get_hype_storage_service),
@@ -129,19 +129,19 @@ async def generate_hype(
     hype_record = None
 
     # Create hype record if persisting
-    if request.persist:
+    if body.persist:
         try:
             # Parse event time
             event_time = datetime.fromisoformat(
-                request.event_time.replace("Z", "+00:00")
+                body.event_time.replace("Z", "+00:00")
             )
             hype_record = await storage_service.create_hype_record(
                 db=db,
                 user_id=user_id,
-                event_title=request.event_title,
+                event_title=body.event_title,
                 event_time=event_time,
-                manager_style=request.manager_style,
-                google_event_id=request.google_event_id,
+                manager_style=body.manager_style,
+                google_event_id=body.google_event_id,
             )
             logger.info(f"Created hype record {hype_record.id} for user {user_id[:8]}...")
         except HypeStorageError as e:
@@ -149,10 +149,10 @@ async def generate_hype(
 
     # Generate hype text
     raw_text = await generate_hype_text(
-        event_title=request.event_title,
-        event_description=request.event_description,
-        event_time=request.event_time,
-        manager_style=request.manager_style,
+        event_title=body.event_title,
+        event_description=body.event_description,
+        event_time=body.event_time,
+        manager_style=body.manager_style,
     )
 
     hype_text = strip_audio_tags(raw_text)
@@ -177,7 +177,7 @@ async def generate_hype(
         hype_id=hype_record.id if hype_record else "temp-" + str(hash(raw_text))[:8],
         hype_text=hype_text,
         audio_text=audio_text,
-        manager=request.manager_style,
+        manager=body.manager_style,
         status="text_ready",
     )
 
@@ -185,8 +185,8 @@ async def generate_hype(
 @router.post("/audio")
 @limiter.limit("10/minute")
 async def generate_audio(
-    request: AudioRequest,
-    http_request: Request,
+    request: Request,
+    body: AudioRequest,
     settings: Settings = Depends(get_settings),
     user_id: str = Depends(get_user_id_from_token),
     db: AsyncSession = Depends(get_db),
@@ -200,18 +200,18 @@ async def generate_audio(
     client = ElevenLabs(api_key=settings.elevenlabs_api_key)
 
     # Select voice: explicit voice_id > manager-specific voice > default
-    voice_id = request.voice_id
-    if not voice_id and request.manager:
-        voice_id = MANAGER_VOICE_IDS.get(request.manager)
+    voice_id = body.voice_id
+    if not voice_id and body.manager:
+        voice_id = MANAGER_VOICE_IDS.get(body.manager)
     voice_id = voice_id or settings.elevenlabs_voice_id
 
-    logger.info(f"[AUDIO] Using voice_id: {voice_id} for manager: {request.manager}")
+    logger.info(f"[AUDIO] Using voice_id: {voice_id} for manager: {body.manager}")
 
     # Generate audio using ElevenLabs v3 with audio tag support
     # v3 stability: 0.0=Creative (expressive), 0.5=Natural, 1.0=Robust (flat)
     audio_stream = client.text_to_speech.convert(
         voice_id=voice_id,
-        text=request.text,
+        text=body.text,
         model_id="eleven_v3",
         output_format="mp3_44100_128",
         voice_settings=VoiceSettings(
@@ -221,7 +221,7 @@ async def generate_audio(
     )
 
     # If hype_id provided, upload to storage
-    if request.hype_id and not request.hype_id.startswith("temp-"):
+    if body.hype_id and not body.hype_id.startswith("temp-"):
         try:
             # Collect all audio bytes
             audio_bytes = b"".join(audio_stream)
@@ -229,11 +229,11 @@ async def generate_audio(
             # Upload to Supabase Storage
             audio_url = await storage_service.upload_audio(
                 db=db,
-                record_id=request.hype_id,
+                record_id=body.hype_id,
                 user_id=user_id,
                 audio_data=audio_bytes,
             )
-            logger.info(f"Uploaded audio for hype record {request.hype_id}")
+            logger.info(f"Uploaded audio for hype record {body.hype_id}")
 
             # Return audio bytes as response (already generated)
             return StreamingResponse(
@@ -250,7 +250,7 @@ async def generate_audio(
             # Regenerate stream since we consumed it
             audio_stream = client.text_to_speech.convert(
                 voice_id=voice_id,
-                text=request.text,
+                text=body.text,
                 model_id="eleven_v3",
                 output_format="mp3_44100_128",
                 voice_settings=VoiceSettings(
