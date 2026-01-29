@@ -84,15 +84,15 @@ jobs:
       - name: Run unit tests
         run: pytest -m "not integration" --cov=app --cov-report=xml
         env:
-          DATABASE_URL: sqlite+aiosqlite:///:memory:
-          SUPABASE_URL: https://test.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
-          ANTHROPIC_API_KEY: test-anthropic-key
-          GOOGLE_CLIENT_ID: test-google-client-id
-          GOOGLE_CLIENT_SECRET: test-google-client-secret
-          TOKEN_ENCRYPTION_KEY: p3Yofvm5Btv907llyK6OAId2TugMkE2giaFIfdRtbzw=
-          ELEVENLABS_API_KEY: test-elevenlabs-key
-          ELEVENLABS_VOICE_ID: test-voice-id
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key"
+          ANTHROPIC_API_KEY: "test-anthropic-key"
+          GOOGLE_CLIENT_ID: "test-google-client-id"
+          GOOGLE_CLIENT_SECRET: "test-google-client-secret"
+          TOKEN_ENCRYPTION_KEY: "p3Yofvm5Btv907llyK6OAId2TugMkE2giaFIfdRtbzw="
+          ELEVENLABS_API_KEY: "test-elevenlabs-key"
+          ELEVENLABS_VOICE_ID: "test-voice-id"
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -126,15 +126,15 @@ jobs:
       - name: Run integration tests
         run: pytest -m "integration" --cov=app --cov-report=xml
         env:
-          DATABASE_URL: sqlite+aiosqlite:///:memory:
-          SUPABASE_URL: https://test.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
-          ANTHROPIC_API_KEY: test-anthropic-key
-          GOOGLE_CLIENT_ID: test-google-client-id
-          GOOGLE_CLIENT_SECRET: test-google-client-secret
-          TOKEN_ENCRYPTION_KEY: p3Yofvm5Btv907llyK6OAId2TugMkE2giaFIfdRtbzw=
-          ELEVENLABS_API_KEY: test-elevenlabs-key
-          ELEVENLABS_VOICE_ID: test-voice-id
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key"
+          ANTHROPIC_API_KEY: "test-anthropic-key"
+          GOOGLE_CLIENT_ID: "test-google-client-id"
+          GOOGLE_CLIENT_SECRET: "test-google-client-secret"
+          TOKEN_ENCRYPTION_KEY: "p3Yofvm5Btv907llyK6OAId2TugMkE2giaFIfdRtbzw="
+          ELEVENLABS_API_KEY: "test-elevenlabs-key"
+          ELEVENLABS_VOICE_ID: "test-voice-id"
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
