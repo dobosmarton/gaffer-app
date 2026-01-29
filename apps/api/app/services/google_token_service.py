@@ -7,23 +7,24 @@ at rest and access tokens are cached to minimize Google API calls.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Optional
 
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
+from fastapi import Depends
 from sqlalchemy import select, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.models import UserGoogleToken
+from app.services.cache_service import CacheService, get_cache_service
 
 logger = logging.getLogger(__name__)
 
-# In-memory cache for access tokens (per-user)
-# In production, consider using Redis for multi-instance deployments
-_access_token_cache: dict[str, tuple[str, datetime]] = {}
+# Cache key prefix for access tokens
+ACCESS_TOKEN_CACHE_PREFIX = "google_access_token:"
 
 # Access tokens are valid for ~1 hour, but we refresh early to avoid edge cases
 ACCESS_TOKEN_CACHE_TTL = timedelta(minutes=50)
@@ -50,9 +51,14 @@ class TokenRefreshError(GoogleTokenError):
 class GoogleTokenService:
     """Service for managing Google OAuth tokens securely."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, cache: CacheService):
         self.settings = settings
         self._fernet = Fernet(settings.token_encryption_key.encode())
+        self._cache = cache
+
+    def _get_cache_key(self, user_id: str) -> str:
+        """Generate cache key for user's access token."""
+        return f"{ACCESS_TOKEN_CACHE_PREFIX}{user_id}"
 
     def _encrypt_token(self, token: str) -> str:
         """Encrypt a token for storage."""
@@ -149,18 +155,19 @@ class GoogleTokenService:
         """Get a valid access token for a user.
 
         This method:
-        1. Checks the in-memory cache first
+        1. Checks the cache first (Redis or in-memory)
         2. If not cached or expired, retrieves refresh token from DB
         3. Exchanges refresh token for new access token
         4. Caches the new access token
         5. Updates refresh token if Google issued a new one
         """
+        cache_key = self._get_cache_key(user_id)
+
         # Check cache first
-        if user_id in _access_token_cache:
-            token, expires_at = _access_token_cache[user_id]
-            if datetime.now(timezone.utc) < expires_at:
-                logger.debug(f"Using cached access token for user {user_id[:8]}...")
-                return token
+        cached_token = await self._cache.get(cache_key)
+        if cached_token:
+            logger.debug(f"Using cached access token for user {user_id[:8]}...")
+            return cached_token
 
         # Cache miss or expired - get refresh token from DB
         refresh_token = await self.get_refresh_token(db, user_id)
@@ -169,8 +176,7 @@ class GoogleTokenService:
         access_token, new_refresh_token = await self._exchange_refresh_token(refresh_token)
 
         # Cache the new access token
-        expires_at = datetime.now(timezone.utc) + ACCESS_TOKEN_CACHE_TTL
-        _access_token_cache[user_id] = (access_token, expires_at)
+        await self._cache.set(cache_key, access_token, ACCESS_TOKEN_CACHE_TTL)
         logger.info(f"Refreshed and cached access token for user {user_id[:8]}...")
 
         # If Google issued a new refresh token, update our stored one
@@ -182,8 +188,10 @@ class GoogleTokenService:
 
     async def revoke_tokens(self, db: AsyncSession, user_id: str) -> None:
         """Remove all tokens for a user (e.g., on logout or disconnect)."""
+        cache_key = self._get_cache_key(user_id)
+
         # Remove from cache
-        _access_token_cache.pop(user_id, None)
+        await self._cache.delete(cache_key)
 
         # Remove from database
         try:
@@ -206,7 +214,9 @@ class GoogleTokenService:
 
 
 # Dependency for FastAPI
-def get_google_token_service() -> GoogleTokenService:
+def get_google_token_service(
+    cache: CacheService = Depends(get_cache_service),
+) -> GoogleTokenService:
     """Get a GoogleTokenService instance."""
     settings = get_settings()
-    return GoogleTokenService(settings)
+    return GoogleTokenService(settings, cache)

@@ -31,9 +31,16 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str
     elevenlabs_voice_id: str = "wo6udizrrtpIxWGp2qJk"
 
+    # Redis (optional - enables distributed caching and rate limiting)
+    redis_url: str | None = None
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def redis_enabled(self) -> bool:
+        return self.redis_url is not None
 
 
 @lru_cache
