@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Use Haiku for cost-efficient classification
-SCORER_MODEL = "claude-3-5-haiku-20241022"
+SCORER_MODEL = "claude-haiku-4-5-20251001"
 
 
 @dataclass
