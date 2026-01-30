@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { Toaster } from "sonner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SupabaseProvider } from "@/lib/supabase-provider";
 import { ThemeProvider } from "@/lib/theme-provider";
@@ -20,6 +21,7 @@ function RootComponent() {
       <ErrorBoundary>
         <SupabaseProvider>
           <Outlet />
+          <Toaster richColors position="top-right" />
           {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
         </SupabaseProvider>
       </ErrorBoundary>

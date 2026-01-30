@@ -9,7 +9,8 @@ import { useUsage, type UsageInfo } from "@/hooks/use-usage";
 import { useSupabase } from "@/lib/supabase-provider";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Loader2, Megaphone, Sparkles } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/(protected)/dashboard")({
   component: Dashboard,
@@ -131,13 +132,31 @@ function Dashboard() {
 
   const syncMutation = useCalendarSync();
 
+  // Track if we should show toast after sync
+  const showToastAfterSync = useRef(false);
+
   // Sync calendar on mount (if not recently synced)
   useEffect(() => {
     if (!needsGoogleAuth && !syncMutation.isPending) {
+      showToastAfterSync.current = true;
       syncMutation.mutate({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsGoogleAuth]);
+
+  // Show toast when events load after sync
+  useEffect(() => {
+    if (showToastAfterSync.current && events && !isLoading) {
+      showToastAfterSync.current = false;
+      const highPriority = events.filter((e) => (e.importanceScore ?? 0) >= 7);
+      if (highPriority.length > 0) {
+        toast.info(
+          `${highPriority.length} important meeting${highPriority.length > 1 ? "s" : ""} coming up!`,
+          { description: "Get hyped before your big meetings." }
+        );
+      }
+    }
+  }, [events, isLoading]);
 
   const handleRefetch = async () => {
     // Trigger sync first, then refetch (sync already invalidates the query)

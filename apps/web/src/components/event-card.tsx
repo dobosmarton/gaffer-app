@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getManagerName } from "@/components/manager-selector";
 import { ManagerDropdown } from "@/components/manager-dropdown";
+import { ImportanceBadge } from "@/components/importance-badge";
 
 export type LatestHype = {
   hypeText: string | null;
@@ -31,6 +32,10 @@ export type CalendarEvent = {
   location?: string;
   attendees?: number;
   latestHype?: LatestHype;
+  // Importance scoring fields
+  importanceScore?: number | null;
+  importanceReason?: string | null;
+  importanceCategory?: string | null;
 };
 
 export type EventHypeState = {
@@ -71,12 +76,14 @@ export const EventCard = ({
   const isGenerating =
     hypeState.status === "generating_text" || hypeState.status === "generating_audio";
   const hasContent = hypeState.status !== "idle";
+  const isHighImportance = event.importanceScore !== null && event.importanceScore !== undefined && event.importanceScore >= 7;
 
   return (
     <Card
       className={cn(
         "overflow-hidden transition-shadow hover:shadow-md",
         isStartingSoon && "border-orange-500/50 dark:border-orange-500/30",
+        isHighImportance && !isStartingSoon && "border-amber-500/30 dark:border-amber-500/20 bg-amber-500/5",
         className
       )}
     >
@@ -84,7 +91,14 @@ export const EventCard = ({
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
+              <ImportanceBadge
+                score={event.importanceScore}
+                reason={event.importanceReason}
+                category={event.importanceCategory}
+              />
+            </div>
 
             {event.description && (
               <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{event.description}</p>
