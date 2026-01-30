@@ -19,6 +19,10 @@ type BackendCalendarEvent = {
   location: string | null;
   attendees: number | null;
   latest_hype: LatestHype | null;
+  // Importance scoring fields
+  importance_score: number | null;
+  importance_reason: string | null;
+  importance_category: string | null;
 };
 
 type BackendCalendarResponse = {
@@ -162,6 +166,9 @@ export const useCalendarEvents = (options?: {
               managerStyle: event.latest_hype.manager_style,
             }
           : undefined,
+        importanceScore: event.importance_score,
+        importanceReason: event.importance_reason,
+        importanceCategory: event.importance_category,
       }));
     },
     // Only enable if we have a session AND we don't need Google auth
