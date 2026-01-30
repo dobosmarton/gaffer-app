@@ -80,6 +80,10 @@ class CachedEvent:
     synced_at: datetime
     is_deleted: bool
     latest_hype: Optional[LatestHypeData] = None
+    # Importance scoring fields
+    importance_score: Optional[int] = None
+    importance_reason: Optional[str] = None
+    importance_category: Optional[str] = None
 
 
 class CalendarSyncService:
@@ -343,6 +347,17 @@ class CalendarSyncService:
         # Update sync state
         await self.update_sync_state(db, user_id)
 
+        # Score any unscored events
+        try:
+            from app.services.meeting_scorer_service import score_user_events
+
+            scored_count = await score_user_events(db, user_id)
+            if scored_count > 0:
+                logger.info(f"Scored {scored_count} events for user {user_id[:8]}...")
+        except Exception as e:
+            # Don't fail sync if scoring fails
+            logger.warning(f"Failed to score events for user {user_id[:8]}...: {e}")
+
         logger.info(
             f"Sync complete for user {user_id[:8]}...: "
             f"added={result.events_added}, "
@@ -452,6 +467,9 @@ class CalendarSyncService:
                     synced_at=row.synced_at,
                     is_deleted=row.is_deleted,
                     latest_hype=latest_hype_map.get(google_event_id),
+                    importance_score=row.importance_score,
+                    importance_reason=row.importance_reason,
+                    importance_category=row.importance_category,
                 )
             )
 
