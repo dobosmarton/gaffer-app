@@ -45,6 +45,14 @@ class CalendarEvent(Base):
         nullable=False,
     )
 
+    # Importance scoring fields
+    importance_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    importance_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    importance_category: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    scored_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     __table_args__ = (
         UniqueConstraint("user_id", "google_event_id", name="unique_user_google_event"),
         Index("idx_calendar_events_user_id", "user_id"),

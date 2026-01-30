@@ -43,6 +43,10 @@ class CalendarEvent(BaseModel):
     location: Optional[str] = None
     attendees: Optional[int] = None
     latest_hype: Optional[LatestHype] = None
+    # Importance scoring fields
+    importance_score: Optional[int] = None
+    importance_reason: Optional[str] = None
+    importance_category: Optional[str] = None
 
 
 class CalendarEventsResponse(BaseModel):
@@ -178,6 +182,9 @@ async def get_calendar_events(
                         audio_url=e.latest_hype.audio_url,
                         manager_style=e.latest_hype.manager_style,
                     ) if e.latest_hype else None,
+                    importance_score=e.importance_score,
+                    importance_reason=e.importance_reason,
+                    importance_category=e.importance_category,
                 )
                 for e in cached_events
             ]
