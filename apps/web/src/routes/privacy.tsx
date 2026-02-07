@@ -59,12 +59,22 @@ function PrivacyPolicy() {
               <li>Meeting titles</li>
               <li>Meeting start and end times</li>
               <li>Meeting descriptions (optional, used to personalize speeches)</li>
-              <li>Attendee names (not email addresses)</li>
+              <li>Number of attendees (not names or email addresses)</li>
             </ul>
             <p className="text-muted-foreground mb-4">
               <strong>Important:</strong> We only access calendar events for the purpose of
-              generating personalized motivational speeches. We do not store your calendar data
-              permanently — it is fetched on-demand and used only during speech generation.
+              generating personalized motivational speeches. Calendar event data is stored in our
+              database to enable the service and is retained while your account is active. You can
+              delete all stored calendar data by deleting your account.
+            </p>
+
+            <h3 className="text-xl font-medium text-foreground mb-3">
+              2.2.1 Derived Data
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              We use AI to compute meeting importance scores and categories from your calendar event
+              data. These derived insights are stored alongside your calendar events to help
+              prioritize your motivational speeches.
             </p>
 
             <h3 className="text-xl font-medium text-foreground mb-3">2.3 Generated Content</h3>
@@ -73,10 +83,11 @@ function PrivacyPolicy() {
               replay them later.
             </p>
 
-            <h3 className="text-xl font-medium text-foreground mb-3">2.4 Usage Data</h3>
+            <h3 className="text-xl font-medium text-foreground mb-3">2.4 Web Analytics</h3>
             <p className="text-muted-foreground">
-              We collect anonymized usage statistics such as the number of speeches generated to
-              improve our service.
+              We use Cloudflare Web Analytics, a privacy-focused, cookie-free analytics service, to
+              collect anonymized usage data such as page views, visits, and referrers. No personal
+              data or Google user data is collected through analytics.
             </p>
           </section>
 
@@ -163,6 +174,23 @@ function PrivacyPolicy() {
                 className="text-amber-500 hover:underline"
               >
                 https://elevenlabs.io/privacy
+              </a>
+            </p>
+
+            <h3 className="text-xl font-medium text-foreground mb-3">
+              4.5 Cloudflare (Web Analytics)
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              We use Cloudflare Web Analytics to collect anonymized, cookie-free website usage
+              statistics. No personal data or Google user data is shared with Cloudflare through
+              analytics. Cloudflare's privacy policy:{" "}
+              <a
+                href="https://www.cloudflare.com/privacypolicy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-500 hover:underline"
+              >
+                https://www.cloudflare.com/privacypolicy/
               </a>
             </p>
           </section>
@@ -252,7 +280,10 @@ function PrivacyPolicy() {
               <li>
                 Generated speeches and audio: Retained until you delete them or delete your account
               </li>
-              <li>Calendar data: Not stored permanently; fetched on-demand only</li>
+              <li>
+                Calendar data: Stored in our database while your account is active; deleted when
+                you delete your account
+              </li>
             </ul>
           </section>
 
