@@ -14,6 +14,7 @@ from app.services.database import get_db
 from app.services.calendar_sync_service import (
     CalendarSyncError,
     CalendarSyncService,
+    InsufficientScopeError,
     get_calendar_sync_service,
 )
 from app.types import ManagerStyle
@@ -109,6 +110,12 @@ async def sync_calendar(
             status_code=401,
             detail={"message": "Google authentication expired", "needs_google_auth": True},
         )
+    except InsufficientScopeError as e:
+        logger.warning(f"Insufficient scope for user {user_id[:8]}...: {e}")
+        raise HTTPException(
+            status_code=403,
+            detail={"message": "Calendar permission not granted. Please reconnect Google.", "needs_google_auth": True},
+        )
     except CalendarSyncError as e:
         logger.error(f"Calendar sync error for user {user_id[:8]}...: {e}")
         raise HTTPException(
@@ -159,7 +166,21 @@ async def get_calendar_events(
             # Auto-sync if cache is empty and never synced before
             if not cached_events and not last_sync:
                 logger.info(f"Empty cache and no sync history for user {user_id[:8]}..., triggering auto-sync")
-                await sync_service.sync_calendar(db, user_id, force_full=True)
+                try:
+                    await sync_service.sync_calendar(db, user_id, force_full=True)
+                except InsufficientScopeError:
+                    raise HTTPException(
+                        status_code=403,
+                        detail={"message": "Calendar permission not granted. Please reconnect Google.", "needs_google_auth": True},
+                    )
+                except (NoRefreshTokenError, TokenRefreshError):
+                    raise HTTPException(
+                        status_code=401,
+                        detail={"message": "Google authentication required", "needs_google_auth": True},
+                    )
+                except CalendarSyncError as e:
+                    logger.warning(f"Auto-sync failed for user {user_id[:8]}...: {e}")
+                    # Fall through — return empty cache rather than failing
                 # Re-fetch from cache after sync
                 cached_events = await sync_service.get_cached_events(
                     db, user_id, time_min, time_max, max_results
@@ -240,6 +261,13 @@ async def get_calendar_events(
                 raise HTTPException(
                     status_code=401,
                     detail={"message": "Google authentication expired", "needs_google_auth": True},
+                )
+
+            if response.status_code == 403:
+                logger.warning(f"Google Calendar API 403 for user {user_id[:8]}... (direct fetch)")
+                raise HTTPException(
+                    status_code=403,
+                    detail={"message": "Calendar permission not granted. Please reconnect Google.", "needs_google_auth": True},
                 )
 
             if response.status_code == 429:

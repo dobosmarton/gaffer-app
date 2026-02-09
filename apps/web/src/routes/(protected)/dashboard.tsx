@@ -2,7 +2,7 @@ import { EventsList } from "@/components/events-list";
 import { GoogleReconnectBanner } from "@/components/google-reconnect-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useCalendarEvents, useCalendarSync } from "@/hooks/use-calendar-events";
+import { NeedsGoogleAuthError, useCalendarEvents, useCalendarSync } from "@/hooks/use-calendar-events";
 import { useHypeGeneration } from "@/hooks/use-hype-generation";
 import { useUpgradeInterest } from "@/hooks/use-upgrade-interest";
 import { useUsage, type UsageInfo } from "@/hooks/use-usage";
@@ -118,7 +118,7 @@ const UsageCard = ({ usage, isRegistered, isRegistering, onRegisterInterest }: U
 };
 
 function Dashboard() {
-  const { needsGoogleAuth, reconnectGoogle } = useSupabase();
+  const { needsGoogleAuth, setGoogleAuthNeeded, reconnectGoogle } = useSupabase();
 
   const { data: events, isLoading, error, isRefetching } = useCalendarEvents({ maxResults: 10 });
 
@@ -144,6 +144,11 @@ function Dashboard() {
       showToastAfterSync.current = true;
       syncMutation.mutate({}, {
         onSettled: () => setInitialSyncDone(true),
+        onError: (error) => {
+          if (error instanceof NeedsGoogleAuthError) {
+            setGoogleAuthNeeded();
+          }
+        },
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

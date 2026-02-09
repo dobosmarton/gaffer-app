@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { CalendarEvent } from "@/components/event-card";
 import { useSupabase } from "@/lib/supabase-provider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -100,9 +101,9 @@ export const useCalendarEvents = (options?: {
   maxResults?: number;
   useCache?: boolean;
 }) => {
-  const { session, needsGoogleAuth } = useSupabase();
+  const { session, needsGoogleAuth, setGoogleAuthNeeded } = useSupabase();
 
-  return useQuery<CalendarEvent[], Error>({
+  const query = useQuery<CalendarEvent[], Error>({
     queryKey: [
       "calendar-events",
       session?.user?.id,
@@ -183,4 +184,13 @@ export const useCalendarEvents = (options?: {
       return failureCount < 3;
     },
   });
+
+  // Bridge NeedsGoogleAuthError to provider state so the reconnect banner appears
+  useEffect(() => {
+    if (query.error instanceof NeedsGoogleAuthError) {
+      setGoogleAuthNeeded();
+    }
+  }, [query.error, setGoogleAuthNeeded]);
+
+  return query;
 };

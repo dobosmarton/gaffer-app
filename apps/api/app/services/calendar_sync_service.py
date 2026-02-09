@@ -49,6 +49,12 @@ class CalendarSyncError(Exception):
     pass
 
 
+class InsufficientScopeError(CalendarSyncError):
+    """Raised when Google Calendar API returns 403 (missing calendar scope)."""
+
+    pass
+
+
 @dataclass(slots=True)
 class SyncResult:
     """Result of a calendar sync operation. Not frozen because counters are incremented during sync."""
@@ -197,6 +203,18 @@ class CalendarSyncService:
 
                 if response.status_code == 401:
                     raise TokenRefreshError("Access token invalid")
+
+                if response.status_code == 403:
+                    error_data = response.json()
+                    error_msg = error_data.get("error", {}).get("message", "Insufficient permissions")
+                    logger.warning(
+                        f"Google Calendar API 403 for user {user_id[:8]}...: {error_msg}"
+                    )
+                    # Clear cached access token — it's valid but lacks calendar scope
+                    await self.token_service._cache.delete(f"google_access_token:{user_id}")
+                    raise InsufficientScopeError(
+                        "Calendar permission not granted. Please reconnect Google."
+                    )
 
                 if response.status_code != 200:
                     error_data = response.json()

@@ -21,6 +21,8 @@ type SupabaseContextType = {
   signOut: () => Promise<void>;
   /** Whether user needs to (re)authenticate with Google */
   needsGoogleAuth: boolean;
+  /** Mark that Google auth is needed (e.g. from API 403 responses) */
+  setGoogleAuthNeeded: () => void;
   /** Trigger Google re-authentication */
   reconnectGoogle: () => Promise<void>;
 };
@@ -148,6 +150,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     navigate({ to: "/login" });
   }, [navigate]);
 
+  const setGoogleAuthNeeded = useCallback(() => {
+    setNeedsGoogleAuth(true);
+  }, []);
+
   const reconnectGoogle = useCallback(async () => {
     tokenStoreAttempted.current = false;
     tokenCheckAttempted.current = false;
@@ -172,9 +178,10 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       isLoading,
       signOut,
       needsGoogleAuth,
+      setGoogleAuthNeeded,
       reconnectGoogle,
     }),
-    [session, isLoading, signOut, needsGoogleAuth, reconnectGoogle]
+    [session, isLoading, signOut, needsGoogleAuth, setGoogleAuthNeeded, reconnectGoogle]
   );
 
   return <SupabaseContext.Provider value={value}>{children}</SupabaseContext.Provider>;
