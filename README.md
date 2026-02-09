@@ -208,7 +208,7 @@ Interactive API docs available at: **http://localhost:8000/docs**
 
 ### Prerequisites
 - Node.js 20+
-- Python 3.11+
+- Python 3.12+
 - pnpm
 - Supabase account
 - Google Cloud Console project (for OAuth)
