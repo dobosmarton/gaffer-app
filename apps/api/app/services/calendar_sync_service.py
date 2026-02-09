@@ -37,6 +37,9 @@ logger = logging.getLogger(__name__)
 # Sync every 5 minutes at most
 MIN_SYNC_INTERVAL = timedelta(minutes=5)
 
+# If last sync is older than this, do a full sync instead of incremental
+STALE_SYNC_THRESHOLD = timedelta(hours=1)
+
 
 class CalendarSyncError(Exception):
     """Base exception for calendar sync operations."""
@@ -329,6 +332,10 @@ class CalendarSyncService:
             last_sync = datetime.fromisoformat(
                 state["last_sync"].replace("Z", "+00:00")
             )
+            # If last sync is too old, do a full sync instead of incremental
+            if (datetime.now(timezone.utc) - last_sync) > STALE_SYNC_THRESHOLD:
+                logger.info(f"Last sync too old for user {user_id[:8]}..., forcing full sync")
+                last_sync = None
 
         if last_sync:
             # Incremental sync - only get events updated since last sync

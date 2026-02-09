@@ -9,7 +9,7 @@ import { useUsage, type UsageInfo } from "@/hooks/use-usage";
 import { useSupabase } from "@/lib/supabase-provider";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Loader2, Megaphone, Sparkles } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(protected)/dashboard")({
@@ -135,11 +135,16 @@ function Dashboard() {
   // Track if we should show toast after sync
   const showToastAfterSync = useRef(false);
 
+  // Track whether the initial sync on mount has completed
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
+
   // Sync calendar on mount (if not recently synced)
   useEffect(() => {
     if (!needsGoogleAuth && !syncMutation.isPending) {
       showToastAfterSync.current = true;
-      syncMutation.mutate({});
+      syncMutation.mutate({}, {
+        onSettled: () => setInitialSyncDone(true),
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsGoogleAuth]);
@@ -186,8 +191,8 @@ function Dashboard() {
 
       <EventsList
         events={events}
-        isLoading={isLoading}
-        error={error}
+        isLoading={isLoading || !initialSyncDone}
+        error={initialSyncDone ? error : null}
         getEventHypeState={getEventHypeState}
         onGenerateHype={generateHype}
         onRefetch={handleRefetch}
