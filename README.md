@@ -2,6 +2,8 @@
 
 Gaffer connects to your Google Calendar and delivers AI-generated football manager-style motivational speeches before your meetings. Choose your manager, click "Hype Me", and get pumped up with a personalized team talk complete with text-to-speech audio.
 
+Each meeting is automatically scored for importance using AI, so you know which meetings deserve the most hype.
+
 ## Architecture
 
 ```
@@ -119,41 +121,63 @@ gaffer/
 │   │   │   │   ├── __root.tsx        # Root layout
 │   │   │   │   ├── index.tsx         # Landing page
 │   │   │   │   ├── login.tsx         # Google OAuth login
+│   │   │   │   ├── privacy.tsx       # Privacy policy
+│   │   │   │   ├── terms.tsx         # Terms of service
 │   │   │   │   └── (protected)/      # Auth-protected routes
 │   │   │   │       ├── route.tsx     # Protected layout
 │   │   │   │       └── dashboard.tsx # Main app
 │   │   │   ├── components/
 │   │   │   │   ├── ui/               # Reusable UI components
+│   │   │   │   │   └── audio-player/ # Audio playback system
 │   │   │   │   ├── event-card.tsx
-│   │   │   │   ├── hype-player.tsx
-│   │   │   │   └── manager-selector.tsx
+│   │   │   │   ├── events-list.tsx
+│   │   │   │   ├── importance-badge.tsx
+│   │   │   │   ├── manager-selector.tsx
+│   │   │   │   ├── google-reconnect-banner.tsx
+│   │   │   │   ├── error-boundary.tsx
+│   │   │   │   └── landing/          # Landing page sections
 │   │   │   ├── hooks/
+│   │   │   │   ├── use-calendar-events.ts
+│   │   │   │   ├── use-hype-generation.ts
+│   │   │   │   ├── use-hype-history.ts
+│   │   │   │   ├── use-usage.ts
+│   │   │   │   └── use-upgrade-interest.ts
 │   │   │   └── lib/
 │   │   │       ├── supabase.ts
-│   │   │       └── supabase-provider.tsx
+│   │   │       ├── supabase-provider.tsx
+│   │   │       ├── theme-provider.tsx
+│   │   │       └── utils.ts
 │   │   └── package.json
 │   │
 │   └── api/                          # Backend
 │       ├── app/
 │       │   ├── main.py               # FastAPI app entry
 │       │   ├── config.py             # Pydantic settings
+│       │   ├── types.py              # Shared Literal types (ManagerStyle, HypeStatus, etc.)
+│       │   ├── rate_limiter.py       # Rate limiting config
 │       │   ├── routers/
 │       │   │   ├── hype.py           # /hype endpoints
 │       │   │   ├── calendar.py       # /calendar endpoints
 │       │   │   └── auth.py           # /auth endpoints
 │       │   ├── services/
-│       │   │   ├── hype_generator.py       # Claude integration
-│       │   │   ├── hype_storage_service.py # Hype persistence + audio storage
+│       │   │   ├── hype_generator.py        # Claude integration
+│       │   │   ├── hype_storage_service.py  # Hype persistence + audio storage
 │       │   │   ├── calendar_sync_service.py # Calendar sync & caching
-│       │   │   ├── google_token_service.py # Token encryption & refresh
-│       │   │   ├── database.py             # SQLAlchemy async engine
-│       │   │   └── supabase_client.py      # Supabase Auth & Storage
+│       │   │   ├── google_token_service.py  # Token encryption & refresh
+│       │   │   ├── meeting_scorer_service.py # AI-based meeting importance scoring
+│       │   │   ├── usage_service.py         # Usage tracking & monthly limits
+│       │   │   ├── upgrade_interest_service.py # Upgrade interest registration
+│       │   │   ├── cache_service.py         # Redis with in-memory fallback
+│       │   │   ├── database.py              # SQLAlchemy async engine
+│       │   │   └── supabase_client.py       # Supabase Auth & Storage
 │       │   ├── models/               # SQLAlchemy models
 │       │   │   ├── base.py
 │       │   │   ├── user_google_token.py
 │       │   │   ├── calendar_event.py
 │       │   │   ├── calendar_sync_state.py
-│       │   │   └── hype_record.py
+│       │   │   ├── hype_record.py
+│       │   │   ├── user_subscription.py
+│       │   │   └── upgrade_interest.py
 │       │   └── prompts/
 │       │       └── manager_styles.py # Manager personalities
 │       ├── migrations/               # Alembic migrations
@@ -161,12 +185,16 @@ gaffer/
 │       │   └── versions/
 │       ├── tests/                    # Test suite
 │       │   ├── conftest.py           # Shared fixtures
-│       │   └── unit/
-│       │       └── services/         # Service unit tests
+│       │   ├── unit/
+│       │   │   └── services/         # Service unit tests
+│       │   └── integration/
+│       │       └── routers/          # Integration tests (PostgreSQL via Docker)
 │       ├── alembic.ini
+│       ├── pyproject.toml            # mypy, ruff, pytest config
 │       ├── requirements.txt
 │       └── requirements-dev.txt      # Test dependencies
 │
+├── .github/workflows/ci.yml         # CI pipeline
 ├── package.json                      # Workspace root
 ├── pnpm-workspace.yaml
 └── README.md
@@ -362,7 +390,7 @@ alembic current
 
 ## Testing
 
-The backend has a comprehensive test suite with 70 tests covering services and business logic.
+The backend has a comprehensive test suite covering services and business logic.
 
 ### Test Architecture
 
@@ -370,6 +398,8 @@ The backend has a comprehensive test suite with 70 tests covering services and b
 - Token encryption/decryption
 - Cache service with fallback behavior
 - Hype text generation and audio tag sanitization
+- Meeting importance scoring logic
+- Usage tracking and limits
 - Cache hit scenarios
 
 **Integration tests** use real PostgreSQL via Docker and cover:

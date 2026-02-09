@@ -1,7 +1,7 @@
 """Shared type aliases for the Gaffer API."""
 
-from typing import Literal
+from typing import Literal, TypeAlias
 
-type ManagerStyle = Literal["ferguson", "klopp", "guardiola", "mourinho", "bielsa"]
-type HypeStatus = Literal["pending", "text_ready", "audio_ready", "error"]
-type PlanType = Literal["free", "pro"]
+ManagerStyle: TypeAlias = Literal["ferguson", "klopp", "guardiola", "mourinho", "bielsa"]
+HypeStatus: TypeAlias = Literal["pending", "text_ready", "audio_ready", "error"]
+PlanType: TypeAlias = Literal["free", "pro"]

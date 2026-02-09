@@ -126,7 +126,8 @@ class TestGenerateHypeText:
     @pytest.mark.asyncio
     async def test_generates_hype_text(self, mock_claude_response):
         """Successfully generates hype text from Claude."""
-        with patch("app.services.hype_generator.client") as mock_client:
+        with patch("app.services.hype_generator._get_client") as mock_get_client:
+            mock_client = mock_get_client.return_value
             mock_client.messages.create.return_value = mock_claude_response
 
             result = await generate_hype_text(
@@ -142,7 +143,8 @@ class TestGenerateHypeText:
     @pytest.mark.asyncio
     async def test_calls_claude_with_correct_model(self, mock_claude_response):
         """Calls Claude with the expected model."""
-        with patch("app.services.hype_generator.client") as mock_client:
+        with patch("app.services.hype_generator._get_client") as mock_get_client:
+            mock_client = mock_get_client.return_value
             mock_client.messages.create.return_value = mock_claude_response
 
             await generate_hype_text(
@@ -158,7 +160,8 @@ class TestGenerateHypeText:
     @pytest.mark.asyncio
     async def test_handles_none_description(self, mock_claude_response):
         """Handles None event description."""
-        with patch("app.services.hype_generator.client") as mock_client:
+        with patch("app.services.hype_generator._get_client") as mock_get_client:
+            mock_client = mock_get_client.return_value
             mock_client.messages.create.return_value = mock_claude_response
 
             result = await generate_hype_text(
@@ -173,7 +176,8 @@ class TestGenerateHypeText:
     @pytest.mark.asyncio
     async def test_falls_back_to_ferguson_for_unknown_style(self, mock_claude_response):
         """Falls back to Ferguson style for unknown manager."""
-        with patch("app.services.hype_generator.client") as mock_client:
+        with patch("app.services.hype_generator._get_client") as mock_get_client:
+            mock_client = mock_get_client.return_value
             mock_client.messages.create.return_value = mock_claude_response
 
             result = await generate_hype_text(
@@ -190,7 +194,8 @@ class TestGenerateHypeText:
     @pytest.mark.asyncio
     async def test_includes_event_details_in_prompt(self, mock_claude_response):
         """Event details are included in the prompt."""
-        with patch("app.services.hype_generator.client") as mock_client:
+        with patch("app.services.hype_generator._get_client") as mock_get_client:
+            mock_client = mock_get_client.return_value
             mock_client.messages.create.return_value = mock_claude_response
 
             await generate_hype_text(
