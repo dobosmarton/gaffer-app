@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.rate_limiter import limiter
+from app.types import HypeStatus, ManagerStyle
 from app.routers.auth import get_user_id_from_token
 from app.services.database import get_db
 from app.services.hype_generator import (
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Custom voice IDs for each manager (created via ElevenLabs Voice Design)
-MANAGER_VOICE_IDS: dict[str, str] = {
+MANAGER_VOICE_IDS: dict[ManagerStyle, str] = {
     "ferguson": "P0j68WlVxoVLfmeuIlDe",
     "klopp": "PGbssAP11uFtfjF1cht6",
     "guardiola": "yJTcVhaSn9fh8KNg4zyA",
@@ -49,7 +50,7 @@ class GenerateHypeRequest(BaseModel):
     event_title: str = Field(..., max_length=500)
     event_description: str | None = Field(None, max_length=5000)
     event_time: str
-    manager_style: str = Field("ferguson", max_length=50)
+    manager_style: ManagerStyle = "ferguson"
     google_event_id: str | None = Field(None, max_length=255)
     persist: bool = True  # Whether to save to database
 
@@ -58,15 +59,15 @@ class GenerateHypeResponse(BaseModel):
     hype_id: str
     hype_text: str   # Clean text for display (tags stripped)
     audio_text: str  # Text with validated tags for TTS
-    manager: str
-    status: str
+    manager: ManagerStyle
+    status: HypeStatus
     audio_url: str | None = None  # URL if audio was persisted
 
 
 class AudioRequest(BaseModel):
     text: str = Field(..., max_length=10000)
     voice_id: str | None = Field(None, max_length=100)
-    manager: str | None = Field(None, max_length=50)
+    manager: ManagerStyle | None = None
     hype_id: str | None = Field(None, max_length=100)
 
 
@@ -74,10 +75,10 @@ class HypeHistoryItem(BaseModel):
     id: str
     event_title: str
     event_time: datetime
-    manager_style: str
+    manager_style: ManagerStyle
     hype_text: str | None
     audio_url: str | None
-    status: str
+    status: HypeStatus
     created_at: datetime
 
 
@@ -245,7 +246,7 @@ async def generate_audio(
                     "X-Audio-Url": audio_url,
                 },
             )
-        except Exception as e:
+        except (HypeStorageError, OSError) as e:
             logger.warning(f"Failed to upload audio, streaming without persistence: {e}")
             # Regenerate stream since we consumed it
             audio_stream = client.text_to_speech.convert(

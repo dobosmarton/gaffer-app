@@ -11,12 +11,14 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select, update, and_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.models import HypeRecord as HypeRecordModel
 from app.models import CalendarEvent as CalendarEventModel
 from app.services.supabase_client import get_supabase_client
+from app.types import HypeStatus, ManagerStyle
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class HypeStorageError(Exception):
     pass
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class HypeRecord:
     """Represents a stored hype record."""
 
@@ -37,11 +39,11 @@ class HypeRecord:
     google_event_id: Optional[str]
     event_title: str
     event_time: datetime
-    manager_style: str
+    manager_style: ManagerStyle
     hype_text: Optional[str]
     audio_text: Optional[str]
     audio_url: Optional[str]
-    status: str
+    status: HypeStatus
     created_at: datetime
     updated_at: datetime
 
@@ -69,7 +71,8 @@ class HypeStorageService:
             result = await db.execute(stmt)
             row = result.scalar_one_or_none()
             return str(row) if row else None
-        except Exception:
+        except SQLAlchemyError as e:
+            logger.warning(f"Failed to look up calendar_event_id: {e}")
             return None
 
     async def create_hype_record(
@@ -122,7 +125,7 @@ class HypeStorageService:
             await db.refresh(record)
             logger.info(f"Created hype record {record.id} for user {user_id[:8]}...")
             return self._model_to_record(record)
-        except Exception as e:
+        except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Failed to create hype record: {e}")
             raise HypeStorageError(f"Failed to create hype record: {e}")
@@ -165,7 +168,7 @@ class HypeStorageService:
             record = result.scalar_one()
             logger.info(f"Updated hype record {record_id} with text")
             return self._model_to_record(record)
-        except Exception as e:
+        except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Failed to update hype record with text: {e}")
             raise HypeStorageError(f"Failed to update hype record: {e}")
@@ -221,7 +224,7 @@ class HypeStorageService:
             logger.info(f"Uploaded audio for hype record {record_id}")
             return audio_url
 
-        except Exception as e:
+        except (SQLAlchemyError, OSError) as e:
             logger.error(f"Failed to upload audio: {e}")
             # Update status to error
             try:
@@ -235,7 +238,7 @@ class HypeStorageService:
                 )
                 await db.execute(stmt)
                 await db.commit()
-            except Exception:
+            except SQLAlchemyError:
                 await db.rollback()
             raise HypeStorageError(f"Failed to upload audio: {e}")
 
@@ -274,7 +277,7 @@ class HypeStorageService:
             record = result.scalar_one()
             logger.info(f"Updated hype record {record_id} with audio URL")
             return self._model_to_record(record)
-        except Exception as e:
+        except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Failed to update hype record with audio: {e}")
             raise HypeStorageError(f"Failed to update hype record: {e}")
@@ -297,7 +300,8 @@ class HypeStorageService:
             result = await db.execute(stmt)
             record = result.scalar_one_or_none()
             return self._model_to_record(record) if record else None
-        except Exception:
+        except SQLAlchemyError as e:
+            logger.warning(f"Failed to get hype record {record_id}: {e}")
             return None
 
     async def get_hype_history(

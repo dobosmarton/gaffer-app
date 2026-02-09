@@ -85,7 +85,7 @@ class RedisCacheBackend(CacheBackend):
         try:
             value = await self._redis.get(key)
             return value.decode() if value else None
-        except Exception as e:
+        except (redis.RedisError, ConnectionError, OSError) as e:
             logger.warning(f"Redis GET error for key {key}: {e}")
             return None
 
@@ -93,7 +93,7 @@ class RedisCacheBackend(CacheBackend):
         try:
             await self._redis.setex(key, int(ttl.total_seconds()), value)
             return True
-        except Exception as e:
+        except (redis.RedisError, ConnectionError, OSError) as e:
             logger.warning(f"Redis SET error for key {key}: {e}")
             return False
 
@@ -101,14 +101,14 @@ class RedisCacheBackend(CacheBackend):
         try:
             result = await self._redis.delete(key)
             return result > 0
-        except Exception as e:
+        except (redis.RedisError, ConnectionError, OSError) as e:
             logger.warning(f"Redis DELETE error for key {key}: {e}")
             return False
 
     async def ping(self) -> bool:
         try:
             return await self._redis.ping()
-        except Exception:
+        except (redis.RedisError, ConnectionError, OSError):
             return False
 
     async def close(self) -> None:
@@ -185,7 +185,7 @@ async def init_cache_service(settings: Settings) -> CacheService:
             logger.info("Redis cache connected successfully")
             primary = RedisCacheBackend(redis_client)
             _cache_service = CacheService(primary, fallback)
-        except Exception as e:
+        except (redis.RedisError, ConnectionError, OSError) as e:
             logger.warning(f"Failed to connect to Redis, using in-memory cache: {e}")
             _cache_service = CacheService(fallback)
     else:

@@ -4,9 +4,17 @@ import anthropic
 
 from app.config import get_settings
 from app.prompts.manager_styles import MANAGER_STYLES
+from app.types import ManagerStyle
 
-settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+_client: anthropic.Anthropic | None = None
+
+
+def _get_client() -> anthropic.Anthropic:
+    global _client
+    if _client is None:
+        settings = get_settings()
+        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    return _client
 
 # Whitelist of supported ElevenLabs v3 audio tags
 SUPPORTED_AUDIO_TAGS = {
@@ -42,7 +50,7 @@ async def generate_hype_text(
     event_title: str,
     event_description: str | None,
     event_time: str,
-    manager_style: str,
+    manager_style: ManagerStyle,
 ) -> str:
     """Generate a hype speech using Claude."""
     style_prompt = MANAGER_STYLES.get(manager_style, MANAGER_STYLES["ferguson"])
@@ -74,7 +82,7 @@ Guidelines:
 
 Give them your pre-match team talk."""
 
-    message = client.messages.create(
+    message = _get_client().messages.create(
         model="claude-sonnet-4-20250514",
         max_tokens=500,
         messages=[{"role": "user", "content": user_prompt}],

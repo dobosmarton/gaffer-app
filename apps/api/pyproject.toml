@@ -36,3 +36,64 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
 ]
+
+# --- mypy: strict type checking ---
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+enable_error_code = [
+    "ignore-without-code",
+    "redundant-cast",
+    "truthy-bool",
+    "truthy-iterable",
+    "unused-awaitable",
+]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "alembic.*",
+    "slowapi.*",
+]
+ignore_missing_imports = true
+
+# --- ruff: linting + formatting ---
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "F",     # Pyflakes
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "A",     # flake8-builtins
+    "C4",    # flake8-comprehensions
+    "SIM",   # flake8-simplify
+    "TCH",   # flake8-type-checking
+    "RUF",   # Ruff-specific rules
+    "PTH",   # flake8-use-pathlib
+    "RET",   # flake8-return
+    "ARG",   # flake8-unused-arguments
+    "PERF",  # perflint
+]
+ignore = [
+    "E501",    # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ARG", "PLR2004"]
+"migrations/**/*.py" = ["F401", "E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true

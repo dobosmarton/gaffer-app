@@ -17,6 +17,7 @@ from typing import Optional
 import httpx
 from sqlalchemy import select, update, and_, or_
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import Depends
@@ -26,6 +27,7 @@ from app.models import CalendarEvent as CalendarEventModel
 from app.models import CalendarSyncState as CalendarSyncStateModel
 from app.models import HypeRecord as HypeRecordModel
 from app.services.cache_service import CacheService, get_cache_service
+from app.types import ManagerStyle
 from app.services.google_token_service import (
     GoogleTokenService,
     NoRefreshTokenError,
@@ -47,9 +49,9 @@ class CalendarSyncError(Exception):
     pass
 
 
-@dataclass
+@dataclass(slots=True)
 class SyncResult:
-    """Result of a calendar sync operation."""
+    """Result of a calendar sync operation. Not frozen because counters are incremented during sync."""
 
     events_added: int = 0
     events_updated: int = 0
@@ -57,16 +59,16 @@ class SyncResult:
     is_full_sync: bool = False
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class LatestHypeData:
     """Latest hype data for an event."""
 
     hype_text: Optional[str]
     audio_url: Optional[str]
-    manager_style: str
+    manager_style: ManagerStyle
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CachedEvent:
     """Represents a cached calendar event."""
 
@@ -111,7 +113,8 @@ class CalendarSyncService:
                     "updated_at": state.updated_at.isoformat() if state.updated_at else None,
                 }
             return {}
-        except Exception:
+        except SQLAlchemyError as e:
+            logger.warning(f"Failed to get sync state for user {user_id[:8]}...: {e}")
             return {}
 
     async def update_sync_state(self, db: AsyncSession, user_id: str) -> None:

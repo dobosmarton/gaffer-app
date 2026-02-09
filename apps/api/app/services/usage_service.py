@@ -18,7 +18,7 @@ from app.models import UserSubscription as UserSubscriptionModel
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class UsageInfo:
     """Current usage information for a user."""
 

@@ -5,6 +5,7 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.rate_limiter import limiter
@@ -15,6 +16,7 @@ from app.services.calendar_sync_service import (
     CalendarSyncService,
     get_calendar_sync_service,
 )
+from app.types import ManagerStyle
 from app.services.google_token_service import (
     GoogleTokenService,
     NoRefreshTokenError,
@@ -31,7 +33,7 @@ class LatestHype(BaseModel):
     """Latest hype data for a calendar event."""
     hype_text: Optional[str] = None
     audio_url: Optional[str] = None
-    manager_style: str = "ferguson"
+    manager_style: ManagerStyle = "ferguson"
 
 
 class CalendarEvent(BaseModel):
@@ -194,7 +196,7 @@ async def get_calendar_events(
                 from_cache=True,
                 last_sync=last_sync,
             )
-        except Exception as e:
+        except (SQLAlchemyError, ValueError) as e:
             logger.warning(f"Failed to get cached events, falling back to Google: {e}")
             # Fall through to fetch from Google
 
@@ -266,7 +268,7 @@ async def get_calendar_events(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except httpx.HTTPError as e:
         logger.error(f"Unexpected error fetching calendar: {e}")
         raise HTTPException(
             status_code=500,

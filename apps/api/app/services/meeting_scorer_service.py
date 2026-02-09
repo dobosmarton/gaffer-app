@@ -21,7 +21,7 @@ settings = get_settings()
 SCORER_MODEL = "claude-haiku-4-5-20251001"
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ScoredEvent:
     """Result of scoring a calendar event."""
 
@@ -32,7 +32,7 @@ class ScoredEvent:
     category: str  # routine, moderate, high_stakes
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class EventForScoring:
     """Event data needed for scoring."""
 

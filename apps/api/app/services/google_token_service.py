@@ -15,6 +15,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Depends
 from sqlalchemy import select, delete
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
@@ -94,7 +95,7 @@ class GoogleTokenService:
             await db.execute(stmt)
             await db.commit()
             logger.info(f"Stored refresh token for user {user_id[:8]}...")
-        except Exception as e:
+        except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Failed to store refresh token: {e}")
             raise GoogleTokenError("Failed to store refresh token")
@@ -107,7 +108,8 @@ class GoogleTokenService:
             )
             result = await db.execute(stmt)
             row = result.scalar_one_or_none()
-        except Exception:
+        except SQLAlchemyError as e:
+            logger.warning(f"Failed to query refresh token for user {user_id[:8]}...: {e}")
             row = None
 
         if not row:
@@ -199,7 +201,7 @@ class GoogleTokenService:
             await db.execute(stmt)
             await db.commit()
             logger.info(f"Revoked tokens for user {user_id[:8]}...")
-        except Exception as e:
+        except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Failed to revoke tokens: {e}")
             raise GoogleTokenError("Failed to revoke tokens")

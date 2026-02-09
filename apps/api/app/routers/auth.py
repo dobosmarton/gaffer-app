@@ -49,7 +49,7 @@ async def get_user_id_from_token(
         return user_response.user.id
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, KeyError, ConnectionError) as e:
         logger.error(f"Authentication error: {e}")
         raise HTTPException(status_code=401, detail="Authentication failed")
 
