@@ -1,3 +1,4 @@
+import { useSEO } from "@/hooks/use-seo";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
@@ -6,6 +7,13 @@ export const Route = createFileRoute("/terms")({
 });
 
 function TermsOfService() {
+  useSEO({
+    title: "Terms of Service | Gaffer",
+    description:
+      "Terms of Service for Gaffer, the AI-powered meeting motivation app.",
+    path: "/terms",
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-4 py-12">

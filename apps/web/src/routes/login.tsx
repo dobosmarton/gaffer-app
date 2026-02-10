@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSEO } from "@/hooks/use-seo";
 import { getCurrentUser, supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
@@ -14,6 +15,14 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  useSEO({
+    title: "Sign In | Gaffer",
+    description:
+      "Sign in with Google to get AI-powered motivational speeches before your meetings.",
+    path: "/login",
+    noIndex: true,
+  });
+
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

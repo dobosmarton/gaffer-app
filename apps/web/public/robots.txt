@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://gaffer.app/sitemap.xml
+Sitemap: https://meeting-gaffer.com/sitemap.xml

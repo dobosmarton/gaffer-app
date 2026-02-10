@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { NeedsGoogleAuthError, useCalendarEvents, useCalendarSync } from "@/hooks/use-calendar-events";
 import { useHypeGeneration } from "@/hooks/use-hype-generation";
+import { useSEO } from "@/hooks/use-seo";
 import { useUpgradeInterest } from "@/hooks/use-upgrade-interest";
 import { useUsage, type UsageInfo } from "@/hooks/use-usage";
 import { useSupabase } from "@/lib/supabase-provider";
@@ -118,6 +119,13 @@ const UsageCard = ({ usage, isRegistered, isRegistering, onRegisterInterest }: U
 };
 
 function Dashboard() {
+  useSEO({
+    title: "Dashboard | Gaffer",
+    description: "Your upcoming meetings and AI-generated motivational speeches.",
+    path: "/dashboard",
+    noIndex: true,
+  });
+
   const { needsGoogleAuth, setGoogleAuthNeeded, reconnectGoogle } = useSupabase();
 
   const { data: events, isLoading, error, isRefetching } = useCalendarEvents({ maxResults: 10 });

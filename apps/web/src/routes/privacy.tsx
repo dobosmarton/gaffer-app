@@ -1,3 +1,4 @@
+import { useSEO } from "@/hooks/use-seo";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
@@ -6,6 +7,13 @@ export const Route = createFileRoute("/privacy")({
 });
 
 function PrivacyPolicy() {
+  useSEO({
+    title: "Privacy Policy | Gaffer",
+    description:
+      "Learn how Gaffer handles your data, Google Calendar information, and privacy.",
+    path: "/privacy",
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-4 py-12">

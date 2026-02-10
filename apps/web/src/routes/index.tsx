@@ -4,6 +4,7 @@ import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { ManagersSection } from "@/components/landing/managers-section";
 // import { PricingSection } from "@/components/landing/pricing-section";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useSEO } from "@/hooks/use-seo";
 import { getCurrentUser } from "@/lib/supabase";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Megaphone, Pause, Play } from "lucide-react";
@@ -20,6 +21,13 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  useSEO({
+    title: "Gaffer - AI Motivational Speeches for Your Meetings",
+    description:
+      "Get AI-generated football manager-style hype speeches before your meetings. Choose from Ferguson, Klopp, Guardiola, and more.",
+    path: "/",
+  });
+
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
